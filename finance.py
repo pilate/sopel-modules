@@ -56,6 +56,8 @@ def get_color(change):
     return color
 
 
+TICKER_TPL = "({shortName} {last} {color}{change:+} {change_pct:+}%\x0f)"
+
 def write_ticker(bot, symbols):
     quotes = get_data("|".join(symbols))
 
