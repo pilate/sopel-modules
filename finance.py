@@ -26,7 +26,7 @@ def get_data(symbol):
         })
 
     if response.status_code != 200:
-        return {}
+        return []
 
     quotes = response.json()["QuickQuoteResult"]["QuickQuote"]
 
