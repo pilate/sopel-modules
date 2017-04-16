@@ -100,13 +100,6 @@ def symbol_lookup(bot, trigger):
             ylow=quote["FundamentalData"]["yrloprice"]
         )
 
-        # if ("ExtendedMktQuote" in quote) and quote["ExtendedMktQuote"]["change"]:
-        #     if quote["ExtendedMktQuote"]["change"] < 0:
-        #         ah_color = "\x0304"
-        #     elif quote["ExtendedMktQuote"]["change"] > 0:
-        #         ah_color = "\x0309"
-        #     response += " Postmkt: " + PRICE_TPL.format(color=ah_color, **quote["ExtendedMktQuote"])
-
         bot.say(response)
 
 
