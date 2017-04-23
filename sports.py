@@ -88,4 +88,5 @@ def game_lookup(bot, trigger):
 
     league = trigger.group(1)
     result = request_data(SPORTS[league], league, token)
-    write_scores(bot, league, result["games"])
+    if "games" in result:
+        write_scores(bot, league, result["games"])
