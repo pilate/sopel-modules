@@ -30,6 +30,11 @@ functions = {
 }
 
 
+names = {
+    "pi": math.pi,
+    "e": math.e
+}
+
 def safe_eval(node):
     if type(node) == unicode:
         node = ast.parse(node, "<string>", "eval").body
@@ -52,14 +57,24 @@ def safe_eval(node):
         args = [safe_eval(arg) for arg in node.args]
         return func(*args)
 
+    elif isinstance(node, ast.Name):
+        assert node.id in names
+        return names[node.id]
+
     raise Exception("Unsafe operation")
 
 
 @sopel.module.rule("\\.?\\.calc (.+)")
 def calc(bot, trigger):
-    expression = trigger.group(1)
+    expression = trigger.group(1).strip()
     try:
-        bot.say("{result}".format(result=safe_eval(expression)))
+        result = safe_eval(expression)
     except Exception as e:
         bot.say("Nope.")
-    
+        return
+
+    if (type(result) == float) and result.is_integer():
+        result = long(result)
+
+    bot.say("{result}".format(result=result))
+
