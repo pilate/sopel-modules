@@ -5,7 +5,21 @@ import re
 import requests
 
 
+def retry(times=10):
+    def wrap(function):
+        def f(*args, **kwargs):
+            attempts = 0
+            while attempts < times:
+                try:
+                    return function(*args, **kwargs)
+                except:
+                    attempts += 1
+            raise Exception("Retry limit exceeded")
+        return f
+    return wrap
 
+
+@retry(times=10)
 def get_data(symbol):
     response = requests.post("http://quote.cnbc.com/quote-html-webservice/quote.htm", data={
             "symbols": symbol,
@@ -92,15 +106,22 @@ def symbol_lookup(bot, trigger):
         else:
             price_line = PRICE_TPL_NV.format(color=color, **quote)
 
-        response = "{symbol} ({full_name}) Last: {price} Daily Range: ({low}-{high}) 52-Week Range: ({ylow}-{yhigh})".format(
+        response = "{symbol} ({full_name}) Last: {price} Daily Range: ({low}-{high})".format(
             symbol=quote["symbol"],
             full_name=quote["name"],
             price=price_line,
             low=quote["low"],
-            high=quote["high"],
-            yhigh=quote["FundamentalData"]["yrhiprice"],
-            ylow=quote["FundamentalData"]["yrloprice"]
-        )
+            high=quote["high"])
+
+        if ("FundamentalData" in quote) and quote["FundamentalData"]:
+            response += " 52-Week Range: ({ylow}-{yhigh})".format(
+                yhigh=quote["FundamentalData"]["yrhiprice"],
+                ylow=quote["FundamentalData"]["yrloprice"])
+
+        if quote["curmktstatus"] != "REG_MKT":
+            if ("ExtendedMktQuote" in quote) and quote["ExtendedMktQuote"]["change"]:
+                ah_color = get_color(quote["ExtendedMktQuote"]["change"])
+                response += " Postmkt: " + PRICE_TPL.format(color=ah_color, **quote["ExtendedMktQuote"])
 
         bot.say(response)
 
@@ -119,9 +140,11 @@ SYMBOL_MAP = {
 TRIGGERS = "|".join(SYMBOL_MAP.keys())
 @sopel.module.rule("\\.?\\.({0})$".format(TRIGGERS))
 def zag_lookup(bot, trigger):
-    user_trigger = trigger.group(1)
+    user_trigger = trigger.group(1).lower()
+
     if user_trigger in SYMBOL_MAP:
         symbols = SYMBOL_MAP[user_trigger]
+
     else:
         for symbol in SYMBOL_MAP.keys():
             if re.search(symbol + "$", user_trigger):
