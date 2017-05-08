@@ -5,6 +5,14 @@ import sopel.module
 import requests
 
 
+"""
+Config should look like:
+
+[sports]
+stattleship_token=zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+
+"""
+
 
 SPORTS = {
     "nhl": "hockey",
