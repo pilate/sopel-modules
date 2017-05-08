@@ -18,11 +18,21 @@ def get_last_tweet(user):
     return fixed
 
 
-@sopel.module.rule("\\.?\\.trump$")
-def last_tweet(bot, trigger):
+def write_twit(bot, tweeter):
     try:
-        tweet = get_last_tweet("realDonaldTrump")
-    except:
+        tweet = get_last_tweet(tweeter)
+    except Exception as e:
         return
 
-    bot.say(tweet)
+    bot.say("@{0}: {1}".format(tweeter, tweet)) 
+
+
+@sopel.module.rule("\\.?\\.tweet ([^ ]+)$")
+def last_tweet(bot, trigger):
+    tweeter = trigger.group(1).strip()
+    write_twit(bot, tweeter)
+
+
+@sopel.module.rule("\\.?\\.trump$")
+def trump_tweet(bot, trigger):
+    write_twit(bot, "realDonaldTrump")
