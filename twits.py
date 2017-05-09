@@ -7,13 +7,13 @@ import requests
 
 def get_last_tweet(user):
     result = requests.get("https://twitrss.me/twitter_user_to_rss/", params={
-        "user": user, 
+        "user": user,
         "replies": "on"
     })
 
     root = ElementTree.fromstring(result.content)
     tweet = root.find("./channel/item/title").text
-    fixed = tweet.replace("pic.twitter.com/", " https://pic.twitter.com/")
+    fixed = tweet.replace("pic.twitter.com/", " https://pic.twitter.com/").replace("\n", " ")
 
     return fixed
 
@@ -24,7 +24,7 @@ def write_twit(bot, tweeter):
     except Exception as e:
         return
 
-    bot.say("@{0}: {1}".format(tweeter, tweet)) 
+    bot.say(u"@{0}: {1}".format(tweeter, tweet))
 
 
 @sopel.module.rule("\\.?\\.tweet ([^ ]+)$")
