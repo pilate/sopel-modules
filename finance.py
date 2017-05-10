@@ -63,9 +63,10 @@ def get_data_cnbc(symbol):
 
 
 @retry(times=10)
-def get_data_yahoo(symbol):
+def get_data_yahoo(symbols):
+    in_str = ", ".join(map(lambda s: "'{0}'".format(s), symbols))
     response = requests.get("https://query.yahooapis.com/v1/public/yql", params={
-            "q": "select * from yahoo.finance.quotes where symbol in ('{}')".format(symbol),
+            "q": "select * from yahoo.finance.quotes where symbol in ({0})".format(in_str),
             "format": "json",
             "env": "store://datatables.org/alltableswithkeys"
         })
@@ -73,7 +74,11 @@ def get_data_yahoo(symbol):
     if response.status_code != 200:
         return {}
 
-    return response.json()["query"]["results"]["quote"]
+    quotes = response.json()["query"]["results"]["quote"]
+    if type(quotes) != list:
+        return [quotes]
+
+    return quotes
 
 
 def get_color(change):
@@ -164,24 +169,27 @@ def zag_lookup(bot, trigger):
     write_ticker(bot, symbols)
 
 
-@sopel.module.rule("\\.\\.fun ([^ ]+)")
+@sopel.module.rule("\\.\\.fun ((?:(?:[^ ]+) ?)+)$")
 def fun_lookup(bot, trigger):
-    raw_symbol = trigger.group(1)
+    raw_symbols = trigger.group(1)
 
-    data = get_data_yahoo(raw_symbol)
-    
-    if data["Name"] is None:
-        return
+    split_symbols = map(lambda s: s.strip(), raw_symbols.split(" "))[:4]
 
-    bot.say(
-        "{symbol} ({Name}) - {LastTradePriceOnly} " \
-        "(EPS: {EarningsShare}) " \
-        "(P/E: {PERatio}) " \
-        "(FP/E: {PriceEPSEstimateNextYear}) " \
-        "(P/S: {PriceSales}) " \
-        "(P/B: {PriceBook}) " \
-        "(BV: {BookValue}) " \
-        "(50MA: {FiftydayMovingAverage}) " \
-        "(200MA: {TwoHundreddayMovingAverage}) " \
-        "(Market Cap: {MarketCapitalization}) " \
-        "(Short Ratio: {ShortRatio})".format(**data))
+    data = get_data_yahoo(split_symbols)
+
+    for row in data:
+        if row["Name"] is None:
+            continue
+
+        bot.say(
+            "{symbol} ({Name}) - {LastTradePriceOnly} " \
+            "(EPS: {EarningsShare}) " \
+            "(P/E: {PERatio}) " \
+            "(FP/E: {PriceEPSEstimateNextYear}) " \
+            "(P/S: {PriceSales}) " \
+            "(P/B: {PriceBook}) " \
+            "(BV: {BookValue}) " \
+            "(50MA: {FiftydayMovingAverage}) " \
+            "(200MA: {TwoHundreddayMovingAverage}) " \
+            "(Market Cap: {MarketCapitalization}) " \
+            "(Short Ratio: {ShortRatio})".format(**row))
