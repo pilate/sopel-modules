@@ -19,6 +19,14 @@ bot> Coinbase - BTC: $1783.57, ETH: $87.28, LTC: $33.04
 ## finance
 Several triggers to display financial market data.
 
+Symbols:
+```
+Pilate> .. goog nflx amzn
+bot> GOOG (Alphabet Class C) Last: 928.78 -3.39 -0.3637% (Vol: 1162976) Daily Range: (925.16-932.00) 52-Week Range: (663.284-937.5)
+bot> NFLX (Netflix Inc) Last: 160.28 +2.82 +1.79% (Vol: 6786342) Daily Range: (156.56-161.10) 52-Week Range: (84.5-161.1) Postmkt: 160.17 -0.11 -0.0686% (Vol: 59502)
+bot> AMZN (Amazon.com Inc) Last: 948.95 -3.87 -0.4062% (Vol: 2021465) Daily Range: (945.00-953.7499) 52-Week Range: (682.115-957.89)
+```
+
 Forex:
 ```
 Pilate> ..fx
