@@ -20,7 +20,7 @@ def retry(times=10):
 
 
 @retry(times=10)
-def get_data(symbol):
+def get_data_cnbc(symbol):
     response = requests.post("http://quote.cnbc.com/quote-html-webservice/quote.htm", data={
             "symbols": symbol,
             "symbolType": "symbol",
@@ -62,6 +62,20 @@ def get_data(symbol):
     return quotes
 
 
+@retry(times=10)
+def get_data_yahoo(symbol):
+    response = requests.get("https://query.yahooapis.com/v1/public/yql", params={
+            "q": "select * from yahoo.finance.quotes where symbol in ('{}')".format(symbol),
+            "format": "json",
+            "env": "store://datatables.org/alltableswithkeys"
+        })
+
+    if response.status_code != 200:
+        return {}
+
+    return response.json()["query"]["results"]["quote"]
+
+
 def get_color(change):
     color = ""
     if change < 0:
@@ -73,7 +87,7 @@ def get_color(change):
 
 TICKER_TPL = "({shortName} {last} {color}{change:+} {change_pct:+}%\x0f)"
 def write_ticker(bot, symbols):
-    quotes = get_data("|".join(symbols))
+    quotes = get_data_cnbc("|".join(symbols))
 
     lines = []
     for quote in quotes:
@@ -82,10 +96,6 @@ def write_ticker(bot, symbols):
 
     bot.say(" ".join(lines))
 
-
-# > .. goog gps
-# > GOOG (Alphabet Class C) Last: 738.634 -2.56 -0.3454% (Vol: 941322) Daily Range: (735.831-741.69) Yearly Range: (556.79-789.87)
-# > GPS (Gap Inc) Last: 26.899 +1.01 +3.90% (Vol: 17584490) Daily Range: (25.70-26.94) Yearly Range: (17-34.53) PostMkt 26.884 -0.01 -0.0372% (Vol: 11066)
 
 PRICE_TPL = "{last} {color}{change:+} {change_pct:+}%\x0f (Vol: {volume})"
 PRICE_TPL_NV = "{last} {color}{change:+} {change_pct:+}%\x0f"
@@ -96,7 +106,7 @@ def symbol_lookup(bot, trigger):
 
     split_symbols = map(lambda s: s.strip(), raw_symbols.split(" "))[:4]
 
-    quotes = get_data("|".join(split_symbols))
+    quotes = get_data_cnbc("|".join(split_symbols))
 
     for quote in quotes:
         color = get_color(quote["change"])
@@ -152,3 +162,26 @@ def zag_lookup(bot, trigger):
                 break
 
     write_ticker(bot, symbols)
+
+
+@sopel.module.rule("\\.\\.fun ([^ ]+)")
+def fun_lookup(bot, trigger):
+    raw_symbol = trigger.group(1)
+
+    data = get_data_yahoo(raw_symbol)
+    
+    if data["Name"] is None:
+        return
+
+    bot.say(
+        "{symbol} ({Name}) - {LastTradePriceOnly} " \
+        "(EPS: {EarningsShare}) " \
+        "(P/E: {PERatio}) " \
+        "(FP/E: {PriceEPSEstimateNextYear}) " \
+        "(P/S: {PriceSales}) " \
+        "(P/B: {PriceBook}) " \
+        "(BV: {BookValue}) " \
+        "(50MA: {FiftydayMovingAverage}) " \
+        "(200MA: {TwoHundreddayMovingAverage}) " \
+        "(Market Cap: {MarketCapitalization}) " \
+        "(Short Ratio: {ShortRatio})".format(**data))
