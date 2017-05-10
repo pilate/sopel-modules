@@ -181,6 +181,8 @@ def fun_lookup(bot, trigger):
         if row["Name"] is None:
             continue
 
+        row["symbol"] = row["symbol"].upper()
+
         bot.say(
             "{symbol} ({Name}) - {LastTradePriceOnly} " \
             "(EPS: {EarningsShare}) " \
