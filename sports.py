@@ -10,7 +10,6 @@ Config should look like:
 
 [sports]
 stattleship_token=zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
-
 """
 
 
