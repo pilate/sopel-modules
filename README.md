@@ -68,7 +68,7 @@ bot> (NIKKEI 19900.09 +0.0 +0.0%) (HSI 25015.42 +0.0 +0.0%) (SHANGHAI 3051.75 -2
 ```
 
 ## sports
-Display results of todays games. Requires a stattleship API key.
+Display results of todays games. (Requires a stattleship API key)
 
 ```
 Pilate> ..nba
@@ -83,7 +83,7 @@ bot> Diamondbacks 4 - Dodgers 4 (5th), Rangers 0 - Mariners 0 (6th), ...
 
 ## twits
 
-Some twitter stuff. Requires an API key.
+Some twitter stuff. (Requires an API key)
 
 Latest tweet from a twitterer:
 ```
@@ -115,7 +115,7 @@ bot> Beverly Hills, CA, United States: 66 F (18.89 C), humidity 62%, wind chill 
 
 
 ## youtube
-Print title and some meta information of pasted YouTube links.
+Print title and some meta information of pasted YouTube links. (Requires an API key)
 ```
 Pilate> https://www.youtube.com/watch?v=dQw4w9WgXcQ
 bot> YouTube - Rick Astley - Never Gonna Give You Up | Duration: 00:03:33 | Views: 312,075,375
