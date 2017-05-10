@@ -15,7 +15,7 @@ def get_prices():
     return prices
 
 
-@sopel.module.rule("\\.?\\.(cr[yi]pto|coinbase)$")
+@sopel.module.rule("\\.?\\.(cr[yi]pto|co[ir]nbase|shitcoins?)$")
 def game_lookup(bot, trigger):
     prices = get_prices()
 
