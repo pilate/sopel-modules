@@ -15,7 +15,7 @@ api_key=zzzzzzzzzzzzzzzzzzzz
 """
 
 
-TPL = u"\x02\x031,0You\x0300,04Tube\x0f - {title} | Duration: {duration} | Views: {views:,}"
+TPL = u"You\x0300,04Tube\x0f - {title} | Duration: {duration} | Views: {views:,}"
 DURATION_RE = re.compile("PT(?P<h>\d+H)?(?P<m>\d+M)?(?P<s>\d+S)")
 
 
