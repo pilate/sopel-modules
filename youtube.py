@@ -16,7 +16,7 @@ api_key=zzzzzzzzzzzzzzzzzzzz
 
 
 TPL = u"You\x0300,04Tube\x0f - {title} | Duration: {duration} | Views: {views:,}"
-DURATION_RE = re.compile("PT(?P<h>\d+H)?(?P<m>\d+M)?(?P<s>\d+S)")
+DURATION_RE = re.compile("PT(?P<h>\d+H)?(?P<m>\d+M)?(?P<s>\d+S)?")
 
 
 class YouTubeSection(sopel.config.types.StaticSection):
