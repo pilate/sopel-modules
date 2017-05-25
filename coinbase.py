@@ -10,7 +10,9 @@ PAIRS = ["BTC-USD", "ETH-USD", "LTC-USD"]
 def get_prices():
     prices = []
     for pair in PAIRS:
-        response = requests.get("https://api.coinbase.com/v2/prices/{0}/spot".format(pair)).json()
+        response = requests.get("https://api.coinbase.com/v2/prices/{0}/spot".format(pair), headers={
+            "CB-VERSION": "2017-05-25"
+        }).json()
         prices.append((pair, response["data"]["amount"]))
     return prices
 
