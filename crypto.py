@@ -53,7 +53,7 @@ def specific_lookup(bot, trigger):
             found_prices = [price]
             break
 
-        elif (search_term.lower() in price["name"].lower()) or (search_term.lower() in price["symbol"].lower()):
+        elif (search_term in price["name"].lower()) or (search_term in price["symbol"].lower()):
             found_prices.append(price)
 
     write_prices(found_prices, bot)
