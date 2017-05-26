@@ -16,8 +16,7 @@ def write_prices(prices, bot):
 
 def clean_price(price):
     for key in ["price_usd", "percent_change_24h"]:
-        if price[key]:
-            price[key] = float(price[key])
+        price[key] = float(price[key] or  0)
 
 
 def get_prices():
@@ -49,11 +48,11 @@ def specific_lookup(bot, trigger):
 
     found_prices = []
     for price in prices:
-        if (search_term == price["name"].lower()) or (search_term == price["symbol"].lower()):
+        if search_term in [price["name"].lower(), price["symbol"].lower()]:
             found_prices = [price]
             break
 
         elif (search_term in price["name"].lower()) or (search_term in price["symbol"].lower()):
             found_prices.append(price)
 
-    write_prices(found_prices, bot)
+    write_prices(found_prices[:10], bot)
