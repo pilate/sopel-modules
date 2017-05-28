@@ -34,6 +34,10 @@ def get_color(change):
     return color
 
 
+def get_fees():
+    return requests.get("https://bitcoinfees.21.co/api/v1/fees/recommended").json()
+
+
 @sopel.module.rule("\\.?\\.(shit|tard|alt)?coins?$")
 def all_lookup(bot, trigger):
     prices = get_prices()
@@ -62,3 +66,16 @@ def specific_lookup(bot, trigger):
     write_prices(found_prices[:10], bot)
 
 
+@sopel.module.rule("\\.?\\.btcfees?$")
+def fee_lookup(bot, trigger):
+    prices = get_prices()
+    for price in prices:
+        if price["symbol"] == "BTC":
+            clean_price(price)
+            break
+
+    fees = get_fees()
+    for key in fees.keys():
+        fees[key] = round(((fees[key] * 226) * 0.00000001) * price["price_usd"], 3)
+
+    bot.say("Fastest: ${0}, 30m: ${1}, 1h: ${2}".format(fees["fastestFee"], fees["halfHourFee"], fees["hourFee"]))
