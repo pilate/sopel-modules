@@ -40,19 +40,25 @@ def all_lookup(bot, trigger):
     write_prices(prices[:10], bot)
 
 
-@sopel.module.rule("\\.?\\.c (.+)$")
+@sopel.module.rule("\\.?\\.c ((?:(?:[^ ]+) ?)+)$")
 def specific_lookup(bot, trigger):
-    search_term = trigger.group(1).lower()
+    raw = trigger.group(1)
+    split = map(lambda s: s.strip().lower(), raw.split())[:10]
 
     prices = get_prices()
 
     found_prices = []
-    for price in prices:
-        if search_term in [price["name"].lower(), price["symbol"].lower()]:
-            found_prices = [price]
-            break
+    for search_term in split:   
+        term_found = []
+        for price in prices:
+            if search_term in [price["name"].lower(), price["symbol"].lower()]:
+                term_found = [price]
+                break
 
-        elif (search_term in price["name"].lower()) or (search_term in price["symbol"].lower()):
-            found_prices.append(price)
+            elif (search_term in price["name"].lower()) or (search_term in price["symbol"].lower()):
+                term_found.append(price)
+        found_prices += term_found
 
     write_prices(found_prices[:10], bot)
+
+
