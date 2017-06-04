@@ -1,10 +1,14 @@
+#!/usr/bin/python
+# -*- coding: UTF-8 -*-
+
 import requests
 
 import sopel.module
 
 
 
-PRICE_TPL = "({name} - ${price_usd} {color}{percent_change_24h:+}%\x0f)"
+# PRICE_TPL_S = "({name} - ${price_usd} {price_sat}s {color}{percent_change_24h:+}%\x0f)"
+PRICE_TPL = u"({name} - ${price_usd}/Ƀ{price_btc} {color}{percent_change_24h:+}%\x0f)"
 
 def write_prices(prices, bot):
     output = []
@@ -17,6 +21,9 @@ def write_prices(prices, bot):
 def clean_price(price):
     for key in ["price_usd", "percent_change_24h"]:
         price[key] = float(price[key] or  0)
+
+    if price["price_btc"]:
+        price["price_btc"] = price["price_btc"].rstrip("0").rstrip(".")
 
 
 def get_prices():
@@ -52,7 +59,7 @@ def specific_lookup(bot, trigger):
     prices = get_prices()
 
     found_prices = []
-    for search_term in split:   
+    for search_term in split:
         term_found = []
         for price in prices:
             if search_term in [price["name"].lower(), price["symbol"].lower()]:
