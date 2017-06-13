@@ -19,7 +19,7 @@ def write_prices(prices, bot):
 
 
 def clean_price(price):
-    for key in ["price_usd", "percent_change_24h"]:
+    for key in ["price_usd", "24h_volume_usd", "percent_change_24h", "available_supply"]:
         price[key] = float(price[key] or  0)
 
     if price["price_btc"]:
@@ -86,3 +86,16 @@ def fee_lookup(bot, trigger):
         fees[key] = round(((fees[key] * 226) * 0.00000001) * price["price_usd"], 3)
 
     bot.say("Fastest: ${0}, 30m: ${1}, 1h: ${2}".format(fees["fastestFee"], fees["halfHourFee"], fees["hourFee"]))
+
+
+@sopel.module.rule("\\.?\\.ccap$")
+def market_cap(bot, trigger):
+    prices = sorted(get_prices(), key=lambda p: p["24h_volume_usd"], reverse=True)
+
+    market_cap = sum(map(lambda p: p["price_usd"] * p["available_supply"], prices))
+    day_cap = sum(map(lambda p: p["24h_volume_usd"], prices))
+    total_vol = sum(map(lambda p: p["24h_volume_usd"], prices))
+
+    leaders = map(lambda p: "{0}: {1}%".format(p["name"], int(round((p["24h_volume_usd"] / total_vol) * 100))), prices[:3])
+
+    bot.say("(Market Cap: ${0:,}) (24h Volume: ${1:,}) (24h Volume Leaders: {2})".format(int(market_cap), int(day_cap), ", ".join(leaders)))
