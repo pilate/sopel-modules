@@ -77,14 +77,7 @@ def safe_eval(node):
     if type(node) == unicode:
         node = ast.parse(node, "<string>", "eval").body
 
-    if isinstance(node, ast.Name):
-        node_id = str(node.id)
-        if node.id.startswith("_"):
-            return coin_price(node_id[1:])
-        else:
-            return stock_price(node_id)
-
-    elif isinstance(node, ast.Num):
+    if isinstance(node, ast.Num):
         return node.n
 
     elif isinstance(node, ast.BinOp):
@@ -103,8 +96,14 @@ def safe_eval(node):
         return func(*args)
 
     elif isinstance(node, ast.Name):
-        assert node.id in names
-        return names[node.id]
+        if node.id in names:
+            return names[node.id]
+
+        node_id = str(node.id)
+        if node.id.startswith("_"):
+            return coin_price(node_id[1:])
+        else:
+            return stock_price(node_id)
 
     raise Exception("Unsafe operation")
 
