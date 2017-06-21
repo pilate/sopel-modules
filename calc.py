@@ -101,9 +101,9 @@ def safe_eval(node):
 
         node_id = str(node.id)
         if node.id.startswith("_"):
-            return coin_price(node_id[1:])
+            return coin_price(node_id[1:].lower())
         else:
-            return stock_price(node_id)
+            return stock_price(node_id.lower())
 
     raise Exception("Unsafe operation")
 
