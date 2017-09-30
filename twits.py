@@ -77,6 +77,7 @@ def get_latest(user):
 def get_tweet(tweet):
     response = requests.get("https://api.twitter.com/1.1/statuses/show.json", params={
             "id": tweet,
+            "tweet_mode": "extended"
         }, headers={
             "Authorization": "Bearer {0}".format(BEARER),
         })
@@ -88,7 +89,11 @@ def get_tweet(tweet):
 
 
 def write_twit(bot, tweet_data):
-    fixed_data = tweet_data["text"].replace("\n", " ")
+    if "full_text" in tweet_data:
+        text = tweet_data["full_text"]
+    else:
+        text = tweet_data["text"]
+    fixed_data = text.replace("\n", " ")
     fixed_data = HTMLParser().unescape(fixed_data)
     bot.say(u"@{0}: {1}".format(tweet_data["user"]["name"], fixed_data))
 
