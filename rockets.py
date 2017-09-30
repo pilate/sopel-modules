@@ -7,7 +7,7 @@ import time
 
 
 
-def get_launch_data(name):
+def get_launch_data(name=""):
     if name:
         name = "/" + name
 
@@ -25,7 +25,7 @@ def get_launch_data(name):
     return launches
 
 
-def print_launch_data(bot, launch):
+def print_launch_data(bot, launch, target=None):
     types = ", ".join(map(lambda l: l["typeName"], launch["missions"]))
 
     line = "(Rocket: {name}) (Payload Type: {type}) (Where: {location}) (When: {net})".format(
@@ -36,7 +36,7 @@ def print_launch_data(bot, launch):
 
     # If we have a launch time, calculate the time remaining
     if launch["netstamp"]:
-        delta = datetime.timedelta(seconds=launch["netstamp"] - int(time.time())) 
+        delta = datetime.timedelta(seconds=launch["netstamp"] - int(time.time()))
         line += " (Countdown: {delta})".format(delta=delta)
 
     if not target:
