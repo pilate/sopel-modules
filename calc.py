@@ -122,5 +122,5 @@ def calc(bot, trigger):
     if (type(result) == float) and result.is_integer():
         result = long(result)
 
-    bot.say("{result}".format(result=result))
+    bot.say("{result:,}".format(result=result))
 
