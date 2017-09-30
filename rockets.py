@@ -39,7 +39,10 @@ def print_launch_data(bot, launch):
         delta = datetime.timedelta(seconds=launch["netstamp"] - int(time.time())) 
         line += " (Countdown: {delta})".format(delta=delta)
 
-    bot.say(line)
+    if not target:
+        bot.say(line)
+    else:
+        bot.msg(target, line)
 
 
 @sopel.module.rule("\\.?\\.launch(?: (.+))?$")

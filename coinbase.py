@@ -18,6 +18,7 @@ def get_prices():
 
 
 @sopel.module.rule("\\.?\\.(cr[yi]pto|co[ir]nbase)$")
+@sopel.module.rule("\\.?\\.corn$")
 def cb_lookup(bot, trigger):
     prices = get_prices()
 
