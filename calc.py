@@ -66,6 +66,8 @@ functions = {
     "sin": math.sin,
     "tan": math.tan,
     "floor": math.floor,
+    "log": math.log,
+    "log10": math.log10,
 }
 
 names = {
