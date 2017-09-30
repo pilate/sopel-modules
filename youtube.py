@@ -68,10 +68,13 @@ def title_lookup(bot, trigger):
         logging.error("Missing api_key configuration setting")
         return
 
-    yt_data = get_data(trigger.groups(1), key)["items"][0]
-    duration = parse_duration(yt_data["contentDetails"]["duration"])
+    yt_data = get_data(trigger.groups(1), key)["items"]
+    if not yt_data:
+        return
+
+    duration = parse_duration(yt_data[0]["contentDetails"]["duration"])
 
     bot.say(TPL.format(
-        title=yt_data["snippet"]["title"],
+        title=yt_data[0]["snippet"]["title"],
         duration=duration,
-        views=long(yt_data["statistics"]["viewCount"])))
+        views=long(yt_data[0]["statistics"]["viewCount"])))
