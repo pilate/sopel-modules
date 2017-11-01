@@ -1,7 +1,8 @@
 from pprint import pprint
+import re
+import time
 
 import sopel.module
-import re
 import requests
 
 
@@ -13,6 +14,7 @@ def retry(times=10):
                 try:
                     return function(*args, **kwargs)
                 except:
+                    time.sleep(1)
                     attempts += 1
             raise Exception("Retry limit exceeded")
         return f
@@ -56,8 +58,10 @@ def get_data_cnbc(symbol):
             quote[key] = float(quote[key])
 
         if "ExtendedMktQuote" in quote:
-            for key in ["change", "change_pct", "last"]:
-                quote["ExtendedMktQuote"][key] = float(quote["ExtendedMktQuote"][key])
+            for key in ["change", "change_pct", "last", "volume"]:
+                if key not in quote["ExtendedMktQuote"]:
+                    quote["ExtendedMktQuote"][key] = 0.0
+                quote["ExtendedMktQuote"][key] = float(quote["ExtendedMktQuote"][key] or 0.0)
 
     return quotes
 
@@ -111,7 +115,11 @@ def symbol_lookup(bot, trigger):
 
     split_symbols = map(lambda s: s.strip(), raw_symbols.split(" "))[:4]
 
-    quotes = get_data_cnbc("|".join(split_symbols))
+    try:
+        quotes = get_data_cnbc("|".join(split_symbols))
+    except Exception as e:
+        bot.say("Error retrieving data")
+        return
 
     for quote in quotes:
         color = get_color(quote["change"])
@@ -169,7 +177,7 @@ def zag_lookup(bot, trigger):
     write_ticker(bot, symbols)
 
 
-@sopel.module.rule("\\.\\.fun ((?:(?:[^ ]+) ?)+)$")
+@sopel.module.rule("\\.?\\.fun ((?:(?:[^ ]+) ?)+)$")
 def fun_lookup(bot, trigger):
     raw_symbols = trigger.group(1)
 
