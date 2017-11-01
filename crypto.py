@@ -110,14 +110,16 @@ def fee_lookup(bot, trigger):
 @sopel.module.rule("\\.?\\.ccap$")
 def market_cap(bot, trigger):
     prices = sorted(get_prices(), key=lambda p: p["24h_volume_usd"], reverse=True)
+    caps = sorted(get_prices(), key=lambda p: p["market_cap_usd"], reverse=True)
 
     market_cap = sum(map(lambda p: p["price_usd"] * p["available_supply"], prices))
     day_cap = sum(map(lambda p: p["24h_volume_usd"], prices))
     total_vol = sum(map(lambda p: p["24h_volume_usd"], prices))
 
-    leaders = map(lambda p: "{0}: {1}%".format(p["name"], int(round((p["24h_volume_usd"] / total_vol) * 100))), prices[:3])
+    vol_leaders = map(lambda p: "{0}: {1}%".format(p["name"], int(round((p["24h_volume_usd"] / total_vol) * 100))), prices[:3])
+    mkt_leaders = map(lambda p: "{0}: {1}%".format(p["name"], int(round((p["market_cap_usd"] / market_cap) * 100))), caps[:3])
 
-    bot.say("(Market Cap: ${0:,}) (24h Volume: ${1:,}) (24h Volume Leaders: {2})".format(int(market_cap), int(day_cap), ", ".join(leaders)))
+    bot.say("(Market Cap: ${0:,}) (24h Volume: ${1:,}) (24h Volume Leaders: {2}) (Market Leaders: {3})".format(int(market_cap), int(day_cap), ", ".join(vol_leaders), ", ".join(mkt_leaders)))
 
 
 @sopel.module.rule("\\.?\\.best$")
@@ -132,3 +134,5 @@ def negative_movers(bot, trigger):
     prices = sorted(get_prices(), key=lambda p: p["market_cap_usd"], reverse=True)
     prices = sorted(prices[:100], key=lambda p: p["percent_change_24h"])
     write_prices(prices[:10], bot)
+
+
