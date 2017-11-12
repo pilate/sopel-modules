@@ -1,5 +1,6 @@
 #!/usr/bin/python
 # -*- coding: UTF-8 -*-
+import json
 
 import requests
 
@@ -56,6 +57,15 @@ def get_color(change):
 
 def get_fees():
     return requests.get("https://bitcoinfees.21.co/api/v1/fees/recommended").json()
+
+
+# https://stackoverflow.com/questions/1094841/reusable-library-to-get-human-readable-version-of-file-size
+def sizeof_fmt(num, suffix='B'):
+    for unit in ['','Ki','Mi','Gi','Ti','Pi','Ei','Zi']:
+        if abs(num) < 1024.0:
+            return "%3.1f%s%s" % (num, unit, suffix)
+        num /= 1024.0
+    return "%.1f%s%s" % (num, 'Yi', suffix)
 
 
 @sopel.module.rule("\\.?\\.(shit|tard|alt)?coins?$")
@@ -135,4 +145,26 @@ def negative_movers(bot, trigger):
     prices = sorted(prices[:100], key=lambda p: p["percent_change_24h"])
     write_prices(prices[:10], bot)
 
+
+@sopel.module.rule("\\.?\\.unconfirmed$")
+@sopel.module.rule("\\.?\\.m[eo]m(pool)?$")
+def mempool(bot, trigger):
+    coins = [
+        ("Core", "https://jochen-hoenicke.de/queue/2h.js"),
+        ("Cash", "https://jochen-hoenicke.de/queue/cash/2h.js"),
+    ]
+    lines = []
+    for coin, data_url in coins:
+        response = requests.get(data_url).content.strip()[5:-4] + "]"
+        try:
+            response_obj = json.loads(response)
+        except Exception as e:
+            print "Failed: {0}".format(e)
+
+        last_data = response_obj[-1]
+        fees = float(last_data[3][0]) / 100000000
+        size = sizeof_fmt(float(last_data[2][0]))
+        lines.append("({0} - {1:,} transactions, Ƀ{2:,.8f} in fees, {3})".format(coin, last_data[1][0], fees, size))
+
+    bot.say(" ".join(lines))
 
