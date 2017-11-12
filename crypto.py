@@ -40,7 +40,7 @@ def clean_price(price):
 
 
 def get_prices():
-    prices = requests.get("https://api.coinmarketcap.com/v1/ticker/").json()
+    prices = requests.get("https://api.coinmarketcap.com/v1/ticker/", params={"limit": 5000}).json()
     map(clean_price, prices)
     return prices
 
