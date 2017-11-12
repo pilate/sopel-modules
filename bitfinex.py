@@ -22,12 +22,11 @@ def get_tickers(symbols):
 @sopel.module.rule("\\.?\\.bfx$")
 @sopel.module.rule("\\.?\\.bitfinex$")
 def bitfinex_lookup(bot, trigger):
-    symbols = filter(lambda p: p.endswith("usd"), get_symbols())
-    tickers = get_tickers(symbols)
+    tickers = get_tickers(["btcusd", "ltcusd", "ethusd", "etcusd", "bchusd", "btgusd"])
 
     texts = []
     for symbol, ticker in tickers:
-        texts.append("{market}: ${price:,}".format(
+        texts.append("{market}: ${price:,.02f}".format(
             market=symbol, 
             price=float(ticker["last_price"])))
 
