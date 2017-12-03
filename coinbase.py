@@ -13,7 +13,7 @@ def get_prices_coinbase():
         response = requests.get("https://api.coinbase.com/v2/prices/{0}/spot".format(pair), headers={
             "CB-VERSION": "2017-05-25"
         }).json()
-        prices.append((pair, response["data"]["amount"]))
+        prices.append((pair, float(response["data"]["amount"])))
     return prices
 
 
@@ -32,7 +32,7 @@ def cb_lookup(bot, trigger):
 
     texts = []
     for pair, price in prices:
-        texts.append("{coin}: ${price}".format(coin=pair.split("-")[0], price=price))
+        texts.append("{coin}: ${price:,}".format(coin=pair.split("-")[0], price=price))
 
     bot.say("Coinbase - {0}".format(", ".join(texts)))
 
@@ -42,7 +42,7 @@ def gdax_lookup(bot, trigger):
     products = filter(lambda p: "USD" in p["id"], get_products_gdax())
 
     texts = []
-    for product in products:
+    for product in reversed(products):
         price = get_price_gdax(product["id"])
         texts.append("{market}: ${price:,} ({volume:,})".format(
             market=product["id"], 
