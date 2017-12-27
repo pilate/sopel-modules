@@ -1,6 +1,9 @@
 #!/usr/bin/python
 # -*- coding: UTF-8 -*-
+from lxml import html
+
 import json
+import time
 
 import requests
 
@@ -11,6 +14,21 @@ import sopel.module
 # PRICE_TPL_S = "({name} - ${price_usd} {price_sat}s {color}{percent_change_24h:+}%\x0f)"
 PRICE_TPL = u"({name} - ${price_usd}/Ƀ{price_btc} {color}{percent_change_24h:+}%\x0f)"
 SINGLE_PRICE_TPL = u"{name} - ${price_usd}/Ƀ{price_btc} {color}{percent_change_24h:+}%\x0f | Cap: ${market_cap_usd} | 24h Vol: ${24h_volume_usd}"
+
+
+def retry(times=10):
+    def wrap(function):
+        def f(*args, **kwargs):
+            attempts = 0
+            while attempts < times:
+                try:
+                    return function(*args, **kwargs)
+                except:
+                    time.sleep(1)
+                    attempts += 1
+            raise Exception("Retry limit exceeded")
+        return f
+    return wrap
 
 
 def write_prices(prices, bot):
@@ -40,6 +58,34 @@ def clean_price(price):
         price["price_btc"] = 0
 
 
+def price_search(needles):
+    prices = get_prices()
+
+    found_prices = []
+    seen_terms = []
+    for search_term in needles:
+        if search_term in ["btg", "btcg"]:
+            search_term = "bitcoin-gold"
+
+        if search_term in seen_terms:
+            continue
+
+        seen_terms.append(search_term)
+
+        term_found = []
+        for price in prices:
+            if search_term in [price["name"].lower(), price["symbol"].lower(), price["id"].lower()]:
+                term_found = [price]
+                break
+
+            elif (search_term in price["name"].lower()) or (search_term in price["symbol"].lower()):
+                term_found.append(price)
+        found_prices += term_found
+
+    return found_prices
+
+
+@retry(10)
 def get_prices():
     prices = requests.get("https://api.coinmarketcap.com/v1/ticker/", params={"limit": 5000}).json()
     map(clean_price, prices)
@@ -68,6 +114,24 @@ def sizeof_fmt(num, suffix='B'):
     return "%.1f%s%s" % (num, 'Yi', suffix)
 
 
+def get_markets(coin_ids):
+    market_map = {}
+    for coin in coin_ids:
+        data = requests.get("https://coinmarketcap.com/currencies/{0}/".format(coin)).content
+        try:
+            tree = html.fromstring(data)
+        except:
+            continue
+
+        market_links = tree.xpath('//*[@id="markets"]//tbody/tr/td[2]/a')
+        # order preserving
+        unique = []
+        [unique.append(item.text) for item in market_links if item.text not in unique]
+        market_map[coin] = unique
+
+    return market_map
+
+
 @sopel.module.rule("\\.?\\.(shit|tard|alt)?coins?$")
 @sopel.module.rule("\\.?\\.shit$")
 def all_lookup(bot, trigger):
@@ -80,24 +144,7 @@ def specific_lookup(bot, trigger):
     raw = trigger.group(1)
     split = map(lambda s: s.strip().lower(), raw.split())[:10]
 
-    prices = get_prices()
-
-    found_prices = []
-    seen_terms = []
-    for search_term in split:
-        if search_term in seen_terms:
-            continue
-        seen_terms.append(search_term)
-
-        term_found = []
-        for price in prices:
-            if search_term in [price["name"].lower(), price["symbol"].lower()]:
-                term_found = [price]
-                break
-
-            elif (search_term in price["name"].lower()) or (search_term in price["symbol"].lower()):
-                term_found.append(price)
-        found_prices += term_found
+    found_prices = price_search(split)
 
     write_prices(found_prices[:10], bot)
 
@@ -168,3 +215,19 @@ def mempool(bot, trigger):
 
     bot.say(" ".join(lines))
 
+
+@sopel.module.rule("\\.?\\.cm ((?:(?:[^ ]+) ?)+)$")
+@sopel.module.rule("\\.?\\.markets? ((?:(?:[^ ]+) ?)+)$")
+def market_lookup(bot, trigger):
+    raw = trigger.group(1)
+    split = set(map(lambda s: s.strip().lower(), raw.split())[:3])
+
+    found_prices = price_search(split)
+
+    coin_ids = map(lambda f: f["id"], found_prices)
+    markets = get_markets(coin_ids[:3])
+    for coin, markets in markets.items():
+        line = "{0} - {1}".format(coin, ", ".join(markets[:15]))
+        if len(markets) > 15:
+            line += "... ({0} others)".format(len(markets) - 15)
+        bot.say(line)
