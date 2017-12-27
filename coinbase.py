@@ -4,7 +4,7 @@ import sopel.module
 
 
 
-PAIRS = ["BTC-USD", "ETH-USD", "LTC-USD"]
+PAIRS = ["BTC-USD", "BCH-USD", "ETH-USD", "LTC-USD"]
 
 
 def get_prices_coinbase():
