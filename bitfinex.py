@@ -15,8 +15,7 @@ def get_ticker(symbol):
 
 
 def get_tickers(symbols):
-    pool = multiprocessing.Pool(len(symbols))
-    return pool.map(get_ticker, symbols)
+    return map(get_ticker, symbols)
 
 
 @sopel.module.rule("\\.?\\.bfx$")
