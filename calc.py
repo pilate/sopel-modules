@@ -31,19 +31,18 @@ operations = {
 
 
 def coin_price(symbol):
+    if symbol in ["btg", "btcg"]:
+        symbol = "bitcoin-gold"
+
     if c is None:
         raise Exception("Crypto module not found")
 
-    prices = c.get_prices()
+    prices = c.price_search([symbol])
+    print("Got prices: {0}".format(prices))
+    if not prices:
+        raise Exception("Crypto symbol not found")
 
-    for price in prices:
-        if symbol in [price["name"].lower(), price["symbol"].lower()]:
-            return price["price_usd"]
-
-        elif (symbol in price["name"].lower()) or (symbol in price["symbol"].lower()):
-            return price["price_usd"]
-
-    raise Exception("Crypto symbol not found")
+    return prices[0]["price_usd"]
 
 
 def stock_price(symbol):
