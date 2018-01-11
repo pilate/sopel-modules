@@ -38,7 +38,6 @@ def coin_price(symbol):
         raise Exception("Crypto module not found")
 
     prices = c.price_search([symbol])
-    print("Got prices: {0}".format(prices))
     if not prices:
         raise Exception("Crypto symbol not found")
 
