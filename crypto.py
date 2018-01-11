@@ -2,6 +2,8 @@
 # -*- coding: UTF-8 -*-
 from lxml import html
 
+import copy
+import datetime
 import json
 import time
 
@@ -13,7 +15,7 @@ import sopel.module
 
 # PRICE_TPL_S = "({name} - ${price_usd} {price_sat}s {color}{percent_change_24h:+}%\x0f)"
 PRICE_TPL = u"({name} - ${price_usd}/Ƀ{price_btc} {color}{percent_change_24h:+}%\x0f)"
-SINGLE_PRICE_TPL = u"{name} - ${price_usd}/Ƀ{price_btc} {color}{percent_change_24h:+}%\x0f | Cap: ${market_cap_usd} | 24h Vol: ${24h_volume_usd}"
+SINGLE_PRICE_TPL = u"{name} - ${price_usd}/Ƀ{price_btc} {color}{percent_change_24h:+}%\x0f | Coins: {available_supply} | Cap: ${market_cap_usd} | 24h Vol: ${24h_volume_usd}"
 
 
 def retry(times=10):
@@ -24,7 +26,7 @@ def retry(times=10):
                 try:
                     return function(*args, **kwargs)
                 except:
-                    time.sleep(1)
+                    time.sleep(.1)
                     attempts += 1
             raise Exception("Retry limit exceeded")
         return f
@@ -32,14 +34,15 @@ def retry(times=10):
 
 
 def write_prices(prices, bot):
+    prices = copy.deepcopy(prices)
     for price in prices:
-        for key in ["price_usd", "24h_volume_usd", "market_cap_usd", "price_btc"]:
+        for key in ["price_usd", "24h_volume_usd", "market_cap_usd", "price_btc", "available_supply"]:
             price[key] = "{:,.8f}".format(price[key]).rstrip("0").rstrip(".")
-            # price["percent_change_24h"] = "{:+,.20g}".rstrip("0").rstrip(".")
 
     output = []
     if len(prices) == 1:
         price = prices[0]
+        print price
         output.append(SINGLE_PRICE_TPL.format(color=get_color(price["percent_change_24h"]), **price))
     else:
         for price in prices:
@@ -84,12 +87,22 @@ def price_search(needles):
 
     return found_prices
 
+price_cache = {
+    "time": datetime.datetime(*[1900, 1, 1]),
+    "values": []
+}
 
 @retry(10)
 def get_prices():
-    prices = requests.get("https://api.coinmarketcap.com/v1/ticker/", params={"limit": 5000}).json()
-    map(clean_price, prices)
-    return prices
+    global price_cache
+    now = datetime.datetime.now()
+    if (now - price_cache["time"]) > datetime.timedelta(minutes=2):
+        prices = requests.get("https://api.coinmarketcap.com/v1/ticker/", params={"limit": 5000}, timeout=1).json()
+        map(clean_price, prices)
+        price_cache["time"] = now
+        price_cache["values"] = prices
+
+    return price_cache["values"]
 
 
 def get_color(change):
@@ -212,6 +225,7 @@ def mempool(bot, trigger):
         last_data = response_obj[-1]
         fees = float(sum(last_data[3])) / 100000000
         size = sizeof_fmt(float(sum(last_data[2])))
+        lines.append("({0} - {1:,} transactions, Ƀ{2:,.8f} in fees, {3})".format(coin, sum(last_data[1]), fees, size))
 
     bot.say(" ".join(lines))
 
