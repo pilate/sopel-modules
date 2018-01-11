@@ -197,21 +197,21 @@ def negative_movers(bot, trigger):
 @sopel.module.rule("\\.?\\.m[eo]m(pool)?$")
 def mempool(bot, trigger):
     coins = [
-        ("Core", "https://jochen-hoenicke.de/queue/2h.js"),
-        ("Cash", "https://jochen-hoenicke.de/queue/cash/2h.js"),
+        ("Core", "https://dedi.jochen-hoenicke.de/queue/2h.js"),
+        ("Cash", "https://dedi.jochen-hoenicke.de/queue/cash/2h.js"),
     ]
     lines = []
     for coin, data_url in coins:
         response = requests.get(data_url).content.strip()[5:-4] + "]"
+
         try:
             response_obj = json.loads(response)
         except Exception as e:
             print "Failed: {0}".format(e)
 
         last_data = response_obj[-1]
-        fees = float(last_data[3][0]) / 100000000
-        size = sizeof_fmt(float(last_data[2][0]))
-        lines.append("({0} - {1:,} transactions, Ƀ{2:,.8f} in fees, {3})".format(coin, last_data[1][0], fees, size))
+        fees = float(sum(last_data[3])) / 100000000
+        size = sizeof_fmt(float(sum(last_data[2])))
 
     bot.say(" ".join(lines))
 
