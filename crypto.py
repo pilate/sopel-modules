@@ -42,7 +42,6 @@ def write_prices(prices, bot):
     output = []
     if len(prices) == 1:
         price = prices[0]
-        print price
         output.append(SINGLE_PRICE_TPL.format(color=get_color(price["percent_change_24h"]), **price))
     else:
         for price in prices:
