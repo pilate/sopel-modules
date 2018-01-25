@@ -209,8 +209,8 @@ def negative_movers(bot, trigger):
 @sopel.module.rule("\\.?\\.m[eo]m(pool)?$")
 def mempool(bot, trigger):
     coins = [
-        ("Core", "https://dedi.jochen-hoenicke.de/queue/2h.js"),
-        ("Cash", "https://dedi.jochen-hoenicke.de/queue/cash/2h.js"),
+        ("Core", "https://jochen-hoenicke.de/queue/2h.js", "Ƀ"),
+        ("Cash", "https://jochen-hoenicke.de/queue/cash/2h.js", "Ƀ"),
         ("LTC", "https://jochen-hoenicke.de/queue/litecoin/2h.js", "Ł"),
     ]
     lines = []
