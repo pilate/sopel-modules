@@ -114,7 +114,7 @@ def get_color(change):
 
 
 def get_fees():
-    return requests.get("https://bitcoinfees.21.co/api/v1/fees/recommended").json()
+    return requests.get("https://bitcoinfees.earn.com/api/v1/fees/recommended").json()
 
 
 # https://stackoverflow.com/questions/1094841/reusable-library-to-get-human-readable-version-of-file-size
@@ -209,12 +209,13 @@ def negative_movers(bot, trigger):
 @sopel.module.rule("\\.?\\.m[eo]m(pool)?$")
 def mempool(bot, trigger):
     coins = [
-        ("Core", "https://dedi.jochen-hoenicke.de/queue/2h.js"),
-        ("Cash", "https://dedi.jochen-hoenicke.de/queue/cash/2h.js"),
+        ("Core", "https://dedi.jochen-hoenicke.de/queue/2h.js", "Ƀ"),
+        ("Cash", "https://dedi.jochen-hoenicke.de/queue/cash/2h.js", "Ƀ"),
+        ("LTC", "https://dedi.jochen-hoenicke.de/queue/litecoin/2h.js", "Ł"),
     ]
     lines = []
-    for coin, data_url in coins:
-        response = requests.get(data_url).content.strip()[5:-4] + "]"
+    for coin, data_url, symbol in coins:
+        response = requests.get(data_url).text.strip()[5:-4] + "]"
 
         try:
             response_obj = json.loads(response)
@@ -224,8 +225,7 @@ def mempool(bot, trigger):
         last_data = response_obj[-1]
         fees = float(sum(last_data[3])) / 100000000
         size = sizeof_fmt(float(sum(last_data[2])))
-        lines.append("({0} - {1:,} transactions, Ƀ{2:,.8f} in fees, {3})".format(coin, sum(last_data[1]), fees, size))
-
+        lines.append("({0} - {1:,} transactions, {2}{3:,.8f} in fees, {4})".format(coin, sum(last_data[1]), symbol, fees, size))
     bot.say(" ".join(lines))
 
 
