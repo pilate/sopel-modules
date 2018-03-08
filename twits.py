@@ -63,7 +63,8 @@ def get_latest(user):
     response = requests.get("https://api.twitter.com/1.1/statuses/user_timeline.json", params={
             "screen_name": user,
             "count": 1,
-            "include_rts": False
+            "include_rts": False,
+            "tweet_mode": "extended"
         }, headers={
             "Authorization": "Bearer {0}".format(BEARER),
         })
