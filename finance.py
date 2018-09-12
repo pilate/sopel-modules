@@ -64,7 +64,7 @@ def get_data_cnbc(symbol):
             quote[key] = float(quote[key])
 
         if "ExtendedMktQuote" in quote:
-            for key in ["change", "change_pct", "last", "volume"]:
+            for key in ["change", "change_pct", "last", "volume", "mktcap"]:
                 if key not in quote["ExtendedMktQuote"]:
                     quote["ExtendedMktQuote"][key] = 0.0
                 quote["ExtendedMktQuote"][key] = float(quote["ExtendedMktQuote"][key] or 0.0)
@@ -143,9 +143,10 @@ def symbol_lookup(bot, trigger):
             high=quote["high"])
 
         if ("FundamentalData" in quote) and quote["FundamentalData"]:
-            response += " 52-Week Range: ({ylow}-{yhigh})".format(
+            response += " 52-Week Range: ({ylow}-{yhigh}) Cap: {mktcap:,}".format(
                 yhigh=quote["FundamentalData"]["yrhiprice"],
-                ylow=quote["FundamentalData"]["yrloprice"])
+                ylow=quote["FundamentalData"]["yrloprice"],
+                mktcap=int(float(quote["FundamentalData"].get("mktcap", "0"))))
 
         if quote["curmktstatus"] != "REG_MKT":
             if ("ExtendedMktQuote" in quote) and quote["ExtendedMktQuote"]["change"]:
