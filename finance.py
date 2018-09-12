@@ -39,6 +39,12 @@ def get_data_cnbc(symbol):
             "partnerId": "2",
             "output": "json",
             "noform": 1
+        },
+        params={
+            "nocache": time.time()
+        },
+        headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate"
         })
 
     if response.status_code != 200:
