@@ -46,9 +46,11 @@ def get_data(video_id, api_key):
 
 
 # Won't work for videos longer than 24hrs
-def parse_duration(duration):
-    match = DURATION_RE.match(duration).groupdict()
+def parse_duration(data):
+    if data["snippet"]["liveBroadcastContent"] == "live":
+        return "Live"
 
+    match = DURATION_RE.match(data["contentDetails"]["duration"]).groupdict()
     duration = []
     for key in "hms":
         if match.get(key):
@@ -72,7 +74,7 @@ def title_lookup(bot, trigger):
     if not yt_data:
         return
 
-    duration = parse_duration(yt_data[0]["contentDetails"]["duration"])
+    duration = parse_duration(yt_data[0])
 
     bot.say(TPL.format(
         title=yt_data[0]["snippet"]["title"],
