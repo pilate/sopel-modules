@@ -21,7 +21,7 @@ def get_tickers(symbols):
 @sopel.module.rule("\\.?\\.bfx$")
 @sopel.module.rule("\\.?\\.(bit)?finex$")
 def bitfinex_lookup(bot, trigger):
-    tickers = get_tickers(["btcusd", "bchusd", "ethusd", "ltcusd", "etcusd",  "btgusd"])
+    tickers = get_tickers(["btcusd", "ethusd", "ltcusd", "etcusd",  "btgusd"])
 
     texts = []
     for symbol, ticker in tickers:
