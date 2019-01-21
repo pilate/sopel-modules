@@ -4,7 +4,7 @@ import sopel.module
 
 
 
-PAIRS = ["BTC-USD", "BCH-USD", "ETH-USD", "LTC-USD"]
+PAIRS = ["BTC-USD", "BCH-USD", "ETH-USD", "ETC-USD", "LTC-USD"]
 
 
 def get_prices_coinbase():
@@ -22,7 +22,7 @@ def get_products_gdax():
 
 
 def get_price_gdax(product_id):
-    return requests.get("https://api.gdax.com/products/{0}/ticker".format(product_id)).json()
+    return requests.get("https://api.pro.coinbase.com/products/{0}/ticker".format(product_id)).json()
 
 
 @sopel.module.rule("\\.?\\.(cr[yi]pto|co[ir]nbas?e)$")
@@ -38,15 +38,16 @@ def cb_lookup(bot, trigger):
 
 
 @sopel.module.rule("\\.?\\.gd(ax)?e?$")
+@sopel.module.rule("\\.?\\.(cbp|pro)$")
 def gdax_lookup(bot, trigger):
-    products = filter(lambda p: "USD" in p["id"], get_products_gdax())
+    # products = filter(lambda p: "USD" in p["id"], get_products_gdax())
 
     texts = []
-    for product in reversed(products):
-        price = get_price_gdax(product["id"])
+    for product in PAIRS:
+        price = get_price_gdax(product)
         texts.append("{market}: ${price:,} ({volume:,})".format(
-            market=product["id"], 
+            market=product,
             price=float(price["price"]),
             volume=int(float(price["volume"]))))
 
-    bot.say("GDAX - {0}".format(", ".join(texts)))
+    bot.say("Coinbase Pro - {0}".format(", ".join(texts)))
