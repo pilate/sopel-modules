@@ -115,11 +115,13 @@ def write_ticker(bot, symbols):
 PRICE_TPL = "{last} {color}{change:+} {change_pct:+}%\x0f (Vol: {volume})"
 PRICE_TPL_NV = "{last} {color}{change:+} {change_pct:+}%\x0f"
 
-@sopel.module.rule("\\.\\. ((?:(?:[^ ]+) ?)+)")
+@sopel.module.rule(r"\.\. ((?:(?:[^ ]+)\s*)+)")
 def symbol_lookup(bot, trigger):
+    print(dir(trigger))
+
     raw_symbols = trigger.group(1)
 
-    split_symbols = map(lambda s: s.strip(), raw_symbols.split(" "))[:4]
+    split_symbols = map(lambda s: s.strip(), re.split(r"\s+", raw_symbols))[:4]
 
     try:
         quotes = get_data_cnbc("|".join(split_symbols))
