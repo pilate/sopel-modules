@@ -61,7 +61,10 @@ def get_data_cnbc(symbol):
 
     for quote in quotes:
         for key in ["change", "change_pct", "last", "open", "previous_day_closing"]:
-            quote[key] = float(quote[key])
+            if key not in quote:
+                quote[key] = 0
+            else:
+                quote[key] = float(quote[key])
 
         if "ExtendedMktQuote" in quote:
             for key in ["change", "change_pct", "last", "volume", "mktcap"]:
