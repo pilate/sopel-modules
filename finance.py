@@ -1,4 +1,9 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 from pprint import pprint
+import json
+import os
 import re
 import time
 
@@ -215,3 +220,39 @@ def fun_lookup(bot, trigger):
             "(200MA: {TwoHundreddayMovingAverage}) " \
             "(Market Cap: {MarketCapitalization}) " \
             "(Short Ratio: {ShortRatio})".format(**row))
+
+
+ALII = "$alii.json"
+if os.path.exists(ALII):
+    ALII = json.load(open("$alii.json", "r"))
+else:
+    ALII = {}
+
+@sopel.module.rule(r"\$alias ([^ ]+) ((?:(?:[^ ]+)\s*)+)")
+def alias_add(bot, trigger):
+    alias = trigger.group(1)
+    if alias == "alias":
+        bot.say("Nope!")
+
+    # if alias in ALII:
+    #     bot.say("Alias {0} in use!".format(alias))
+    #     return
+
+    raw_symbols = trigger.group(2)
+    split_symbols = map(lambda s: s.strip(), re.split(r"\s+", raw_symbols))[:10]
+    ALII[alias] = split_symbols
+
+    bot.say("Alias ${0} set to: {1} 🚀🚀🚀".format(alias, ", ".join(split_symbols)))
+    json.dump(ALII, open("$alii.json", "w+"))
+
+
+@sopel.module.rule(r"\$([^ ]+)")
+def alias_use(bot, trigger):
+    alias = trigger.group(1)
+    if alias == "alias":
+        return
+
+    if alias not in ALII:
+        return
+
+    write_ticker(bot, ALII[alias])
