@@ -167,9 +167,9 @@ def symbol_lookup(bot, trigger):
 
 
 SYMBOL_MAP = {
-    "f(ore)?x": ["EUR=", "GBP=", "JPY=", "CHF=", "AUD=", "USDCAD", "NZD=", "EURJPY=", "EURCHF=", "EURGBP=", "CADUSD=", "CNYUSD="],
+    "f(ore)?x": ["EUR=", "GBP=", "JPY=", "CHF=", "AUD=", "USDCAD", "NZD=", "EURJPY=", "EURCHF=", "EURGBP=", "CADUSD=", "CNYUSD=", "RUB="],
     "b": ["US2Y", "US5Y", "US7Y", "US10Y", "US30Y"],
-    "rtc[ou]m": ["@CL.1", "@GC.1", "@SI.1", "@NG.1"],
+    "rtc[ou]m": ["@CL.1", "@HG.1", "@SI.1", "@GC.1", "@NG.1"],
     "us": [".DJI", ".SPX", ".IXIC", ".NDX", ".RUT"],
     "fus": ["@DJ.1", "@SP.1", "@NQ.1"],
     "(ca|eh)": [".GSPTSE"],
