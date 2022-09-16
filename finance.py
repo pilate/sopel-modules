@@ -145,7 +145,7 @@ def symbol_lookup(bot, trigger):
         else:
             price_line = PRICE_TPL_NV.format(color=color, **quote)
 
-        response = "{symbol} ({full_name}) Last: {price} Daily Range: ({low}-{high})".format(
+        response = "{symbol} ({full_name}) Last: {price} | Daily Range: {low}-{high}".format(
             symbol=quote["symbol"],
             full_name=quote["name"],
             price=price_line,
@@ -153,15 +153,21 @@ def symbol_lookup(bot, trigger):
             high=quote["high"])
 
         if ("FundamentalData" in quote) and quote["FundamentalData"]:
-            response += " 52-Week Range: ({ylow}-{yhigh}) Cap: {mktcap:,}".format(
-                yhigh=quote["FundamentalData"]["yrhiprice"],
-                ylow=quote["FundamentalData"]["yrloprice"],
-                mktcap=int(float(quote["FundamentalData"].get("mktcap", "0"))))
+            fundies = quote["FundamentalData"]
+            response += " | 52-Week Range: {ylow}-{yhigh} | Cap: ${mktcap:,}".format(
+                yhigh=fundies["yrhiprice"],
+                ylow=fundies["yrloprice"],
+                mktcap=int(float(fundies.get("mktcap", "0"))))
+            if fundies.get("dividend", '0') != '0':
+                response += " | Dividend: {0}".format(
+                    round(float(fundies["dividend"]), 3))
+                if "dividendyield" in fundies:
+                    response += " ({0}%)".format(round(float(fundies["dividendyield"]), 3))
 
         if quote["curmktstatus"] != "REG_MKT":
             if ("ExtendedMktQuote" in quote) and quote["ExtendedMktQuote"]["change"]:
                 ah_color = get_color(quote["ExtendedMktQuote"]["change"])
-                response += " Postmkt: " + PRICE_TPL.format(color=ah_color, **quote["ExtendedMktQuote"])
+                response += " | Postmkt: " + PRICE_TPL.format(color=ah_color, **quote["ExtendedMktQuote"])
 
         bot.say(response)
 
