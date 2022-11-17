@@ -28,25 +28,16 @@ def retry(times=10):
 
 @retry(times=10)
 def get_data_cnbc(symbol):
-    response = requests.post("http://quote.cnbc.com/quote-html-webservice/quote.htm", data={
+    response = requests.get("https://quote.cnbc.com/quote-html-webservice/restQuote/symbolType/symbol", params={
             "symbols": symbol,
-            "symbolType": "symbol",
-            "requestMethod": "quick",
-            "realtime": "1",
-            "extended": "1",
+            "requestMethod": "itv",
             "exthrs": "1",
             "extmode": "ALL",
             "fund": "1",
             "events": "0",
-            "entitlement": "1",
-            "skipcache": "0",
-            "extendedMask": "2",
             "partnerId": "2",
             "output": "json",
             "noform": 1
-        },
-        params={
-            "nocache": time.time()
         },
         headers={
             "Cache-Control": "no-cache, no-store, must-revalidate"
@@ -55,7 +46,7 @@ def get_data_cnbc(symbol):
     if response.status_code != 200:
         return []
 
-    quotes = response.json()["QuickQuoteResult"]["QuickQuote"]
+    quotes = response.json()["FormattedQuoteResult"]["FormattedQuote"]
 
     # Always return a list
     if type(quotes) != list:
@@ -69,13 +60,18 @@ def get_data_cnbc(symbol):
             if key not in quote:
                 quote[key] = 0
             else:
-                quote[key] = float(quote[key])
+                no_pct = quote[key].rstrip("%").replace(",", "")
+                quote[key] = float(no_pct)
 
+
+        # print(json.dumps(quote))
         if "ExtendedMktQuote" in quote:
             for key in ["change", "change_pct", "last", "volume", "mktcap"]:
                 if key not in quote["ExtendedMktQuote"]:
-                    quote["ExtendedMktQuote"][key] = 0.0
-                quote["ExtendedMktQuote"][key] = float(quote["ExtendedMktQuote"][key] or 0.0)
+                    quote["ExtendedMktQuote"][key] = "0.0"
+
+                no_pct = quote["ExtendedMktQuote"][key].rstrip("%").replace(",", "")
+                quote["ExtendedMktQuote"][key] = float(no_pct or 0.0)
 
     return quotes
 
@@ -125,8 +121,6 @@ PRICE_TPL_NV = "{last} {color}{change:+} {change_pct:+}%\x0f"
 
 @sopel.module.rule(r"\.\. ((?:(?:[^ ]+)\s*)+)")
 def symbol_lookup(bot, trigger):
-    print(dir(trigger))
-
     raw_symbols = trigger.group(1)
 
     split_symbols = map(lambda s: s.strip(), re.split(r"\s+", raw_symbols))[:4]
