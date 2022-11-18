@@ -60,17 +60,20 @@ def get_data_cnbc(symbol):
             if key not in quote:
                 quote[key] = 0
             else:
-                no_pct = quote[key].rstrip("%").replace(",", "")
-                quote[key] = float(no_pct)
+                no_pct = strip_formatting(quote[key])
+                if no_pct == "UNCH":
+                    quote[key] = 0
+                else:
+                    quote[key] = float(no_pct)
 
 
         # print(json.dumps(quote))
         if "ExtendedMktQuote" in quote:
-            for key in ["change", "change_pct", "last", "volume", "mktcap"]:
+            for key in ["change", "change_pct", "last", "volume"]:
                 if key not in quote["ExtendedMktQuote"]:
                     quote["ExtendedMktQuote"][key] = "0.0"
 
-                no_pct = quote["ExtendedMktQuote"][key].rstrip("%").replace(",", "")
+                no_pct = strip_formatting(quote["ExtendedMktQuote"][key])
                 if no_pct == "UNCH":
                     quote["ExtendedMktQuote"][key] = 0.0
                 else:
@@ -122,6 +125,17 @@ def write_ticker(bot, symbols):
 PRICE_TPL = "{last} {color}{change:+} {change_pct:+}%\x0f (Vol: {volume})"
 PRICE_TPL_NV = "{last} {color}{change:+} {change_pct:+}%\x0f"
 
+
+def strip_formatting(value):
+    if not value:
+        return value
+
+    value = value.rstrip("%").replace(",", "")
+    if value == "UNCH":
+        return value
+    return float(value)
+
+
 @sopel.module.rule(r"\.\. ((?:(?:[^ ]+)\s*)+)")
 def symbol_lookup(bot, trigger):
     raw_symbols = trigger.group(1)
@@ -149,17 +163,19 @@ def symbol_lookup(bot, trigger):
             low=quote["low"],
             high=quote["high"])
 
-        if ("FundamentalData" in quote) and quote["FundamentalData"]:
-            fundies = quote["FundamentalData"]
-            response += " | 52-Week Range: {ylow}-{yhigh} | Cap: ${mktcap:,}".format(
-                yhigh=fundies["yrhiprice"],
-                ylow=fundies["yrloprice"],
-                mktcap=int(float(fundies.get("mktcap", "0"))))
-            if fundies.get("dividend", '0') != '0':
-                response += " | Dividend: {0}".format(
-                    round(float(fundies["dividend"]), 3))
-                if "dividendyield" in fundies:
-                    response += " ({0}%)".format(round(float(fundies["dividendyield"]), 3))
+        response += " | 52-Week Range: {ylow}-{yhigh}".format(
+            yhigh=quote["yrhiprice"],
+            ylow=quote["yrloprice"],
+            mktcap=quote.get("mktcapView", "0"))
+
+        if "mktcapView" in quote:
+            response += " | Cap: ${mktcap}".format(mktcap=quote["mktcapView"])
+
+        if quote.get("dividend", '0') != '0':
+            response += " | Dividend: {0}".format(
+                round(float(strip_formatting(quote["dividend"])), 3))
+            if "dividendyield" in quote:
+                response += " ({0}%)".format(round(float(strip_formatting(quote["dividendyield"])), 3))
 
         if quote["curmktstatus"] != "REG_MKT":
             if ("ExtendedMktQuote" in quote) and quote["ExtendedMktQuote"]["change"]:
