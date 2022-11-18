@@ -71,7 +71,10 @@ def get_data_cnbc(symbol):
                     quote["ExtendedMktQuote"][key] = "0.0"
 
                 no_pct = quote["ExtendedMktQuote"][key].rstrip("%").replace(",", "")
-                quote["ExtendedMktQuote"][key] = float(no_pct or 0.0)
+                if no_pct == "UNCH":
+                    quote["ExtendedMktQuote"][key] = 0.0
+                else:
+                    quote["ExtendedMktQuote"][key] = float(no_pct or 0.0)
 
     return quotes
 
