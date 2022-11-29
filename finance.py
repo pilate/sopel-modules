@@ -190,7 +190,7 @@ SYMBOL_MAP = {
     "b": ["US2Y", "US5Y", "US7Y", "US10Y", "US30Y"],
     "rtc[ou]m": ["@CL.1", "@HG.1", "@SI.1", "@GC.1", "@NG.1"],
     "us": [".DJI", ".SPX", ".IXIC", ".NDX", ".RUT"],
-    "fus": ["@DJ.1", "@SP.1", "@NQ.1"],
+    "fus": ["@DJ.1", "@SP.1", "@ND.1"],
     "(ca|eh)": [".GSPTSE"],
     "eu": [".GDAXI", ".FTSE", ".FCHI"],
     "asia": [".N225", ".HSI", ".SSEC"]
