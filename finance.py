@@ -82,25 +82,6 @@ def get_data_cnbc(symbol):
     return quotes
 
 
-@retry(times=10)
-def get_data_yahoo(symbols):
-    in_str = ", ".join(map(lambda s: "'{0}'".format(s), symbols))
-    response = requests.get("https://query.yahooapis.com/v1/public/yql", params={
-            "q": "select * from yahoo.finance.quotes where symbol in ({0})".format(in_str),
-            "format": "json",
-            "env": "store://datatables.org/alltableswithkeys"
-        })
-
-    if response.status_code != 200:
-        return {}
-
-    quotes = response.json()["query"]["results"]["quote"]
-    if type(quotes) != list:
-        return [quotes]
-
-    return quotes
-
-
 def get_color(change):
     color = ""
     if change < 0:
@@ -211,34 +192,6 @@ def zag_lookup(bot, trigger):
                 break
 
     write_ticker(bot, symbols)
-
-
-@sopel.module.rule("\\.?\\.fun ((?:(?:[^ ]+) ?)+)$")
-def fun_lookup(bot, trigger):
-    raw_symbols = trigger.group(1)
-
-    split_symbols = map(lambda s: s.strip(), raw_symbols.split(" "))[:4]
-
-    data = get_data_yahoo(split_symbols)
-
-    for row in data:
-        if row["Name"] is None:
-            continue
-
-        row["symbol"] = row["symbol"].upper()
-
-        bot.say(
-            "{symbol} ({Name}) - {LastTradePriceOnly} " \
-            "(EPS: {EarningsShare}) " \
-            "(P/E: {PERatio}) " \
-            "(FP/E: {PriceEPSEstimateNextYear}) " \
-            "(P/S: {PriceSales}) " \
-            "(P/B: {PriceBook}) " \
-            "(BV: {BookValue}) " \
-            "(50MA: {FiftydayMovingAverage}) " \
-            "(200MA: {TwoHundreddayMovingAverage}) " \
-            "(Market Cap: {MarketCapitalization}) " \
-            "(Short Ratio: {ShortRatio})".format(**row))
 
 
 ALII = "$alii.json"
