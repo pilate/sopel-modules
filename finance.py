@@ -22,13 +22,17 @@ def retry(times=10):
                     time.sleep(1)
                     attempts += 1
             raise Exception("Retry limit exceeded")
+
         return f
+
     return wrap
 
 
 @retry(times=10)
 def get_data_cnbc(symbol):
-    response = requests.get("https://quote.cnbc.com/quote-html-webservice/restQuote/symbolType/symbol", params={
+    response = requests.get(
+        "https://quote.cnbc.com/quote-html-webservice/restQuote/symbolType/symbol",
+        params={
             "symbols": symbol,
             "requestMethod": "itv",
             "exthrs": "1",
@@ -37,11 +41,10 @@ def get_data_cnbc(symbol):
             "events": "0",
             "partnerId": "2",
             "output": "json",
-            "noform": 1
+            "noform": 1,
         },
-        headers={
-            "Cache-Control": "no-cache, no-store, must-revalidate"
-        })
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
+    )
 
     if response.status_code != 200:
         return []
@@ -66,8 +69,6 @@ def get_data_cnbc(symbol):
                 else:
                     quote[key] = float(no_pct)
 
-
-        # print(json.dumps(quote))
         if "ExtendedMktQuote" in quote:
             for key in ["change", "change_pct", "last", "volume"]:
                 if key not in quote["ExtendedMktQuote"]:
@@ -92,6 +93,8 @@ def get_color(change):
 
 
 TICKER_TPL = "({shortName} {last} {color}{change:+} {change_pct:+}%\x0f)"
+
+
 def write_ticker(bot, symbols):
     quotes = get_data_cnbc("|".join(symbols))
 
@@ -137,47 +140,72 @@ def symbol_lookup(bot, trigger):
         else:
             price_line = PRICE_TPL_NV.format(color=color, **quote)
 
-        response = "{symbol} ({full_name}) Last: {price} | Daily Range: {low}-{high}".format(
-            symbol=quote["symbol"],
-            full_name=quote["name"],
-            price=price_line,
-            low=quote["low"],
-            high=quote["high"])
+        response = (
+            "{symbol} ({full_name}) Last: {price} | Daily Range: {low}-{high}".format(
+                symbol=quote["symbol"],
+                full_name=quote["name"],
+                price=price_line,
+                low=quote["low"],
+                high=quote["high"],
+            )
+        )
 
         response += " | 52-Week Range: {ylow}-{yhigh}".format(
             yhigh=quote["yrhiprice"],
             ylow=quote["yrloprice"],
-            mktcap=quote.get("mktcapView", "0"))
+            mktcap=quote.get("mktcapView", "0"),
+        )
 
         if "mktcapView" in quote:
             response += " | Cap: ${mktcap}".format(mktcap=quote["mktcapView"])
 
-        if quote.get("dividend", '0') != '0':
+        if quote.get("dividend", "0") != "0":
             response += " | Dividend: {0}".format(
-                round(float(strip_formatting(quote["dividend"])), 3))
+                round(float(strip_formatting(quote["dividend"])), 3)
+            )
             if "dividendyield" in quote:
-                response += " ({0}%)".format(round(float(strip_formatting(quote["dividendyield"])), 3))
+                response += " ({0}%)".format(
+                    round(float(strip_formatting(quote["dividendyield"])), 3)
+                )
 
         if quote["curmktstatus"] != "REG_MKT":
             if ("ExtendedMktQuote" in quote) and quote["ExtendedMktQuote"]["change"]:
                 ah_color = get_color(quote["ExtendedMktQuote"]["change"])
-                response += " | Postmkt: " + PRICE_TPL.format(color=ah_color, **quote["ExtendedMktQuote"])
+                response += " | Postmkt: " + PRICE_TPL.format(
+                    color=ah_color, **quote["ExtendedMktQuote"]
+                )
 
         bot.say(response)
 
 
 SYMBOL_MAP = {
-    "f(ore)?x": ["EUR=", "GBP=", "JPY=", "CHF=", "AUD=", "USDCAD", "NZD=", "EURJPY=", "EURCHF=", "EURGBP=", "CADUSD=", "CNYUSD=", "RUB="],
+    "f(ore)?x": [
+        "EUR=",
+        "GBP=",
+        "JPY=",
+        "CHF=",
+        "AUD=",
+        "USDCAD",
+        "NZD=",
+        "EURJPY=",
+        "EURCHF=",
+        "EURGBP=",
+        "CADUSD=",
+        "CNYUSD=",
+        "RUB=",
+    ],
     "b": ["US2Y", "US5Y", "US7Y", "US10Y", "US30Y"],
     "rtc[ou]m": ["@CL.1", "@HG.1", "@SI.1", "@GC.1", "@NG.1"],
     "us": [".DJI", ".SPX", ".IXIC", ".NDX", ".RUT"],
     "fus": ["@DJ.1", "@SP.1", "@ND.1"],
     "(ca|eh)": [".GSPTSE"],
     "eu": [".GDAXI", ".FTSE", ".FCHI"],
-    "asia": [".N225", ".HSI", ".SSEC"]
+    "asia": [".N225", ".HSI", ".SSEC"],
 }
 
 TRIGGERS = "|".join(SYMBOL_MAP.keys())
+
+
 @sopel.module.rule("\\.?\\.({0})$".format(TRIGGERS))
 def zag_lookup(bot, trigger):
     user_trigger = trigger.group(1).lower()
@@ -199,6 +227,7 @@ if os.path.exists(ALII):
     ALII = json.load(open("$alii.json", "r"))
 else:
     ALII = {}
+
 
 @sopel.module.rule(r"\$alias ([^ ]+) ((?:(?:[^ ]+)\s*)+)")
 def alias_add(bot, trigger):
