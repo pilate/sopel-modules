@@ -1,8 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
-import json
-import os
 import re
 import time
 from pprint import pprint
@@ -40,14 +37,7 @@ SYMBOL_MAP = {
     "eu": [".GDAXI", ".FTSE", ".FCHI"],
     "asia": [".N225", ".HSI", ".SSEC"],
 }
-
 TRIGGERS = "|".join(SYMBOL_MAP.keys())
-
-ALII = "$alii.json"
-if os.path.exists(ALII):
-    ALII = json.load(open("$alii.json", "r"))
-else:
-    ALII = {}
 
 
 def retry(times=10):
@@ -177,7 +167,7 @@ def zag_lookup(bot, trigger):
         symbols = SYMBOL_MAP[user_trigger]
 
     else:
-        for symbol in SYMBOL_MAP.keys():
+        for symbol in SYMBOL_MAP:
             if re.search(symbol + "$", user_trigger):
                 symbols = SYMBOL_MAP[symbol]
                 break
@@ -188,19 +178,17 @@ def zag_lookup(bot, trigger):
 @sopel.module.rule(r"\$alias ([^ ]+) ((?:(?:[^ ]+)\s*)+)")
 def alias_add(bot, trigger):
     alias = trigger.group(1)
-    if alias == "alias":
-        bot.say("Nope!")
 
-    # if alias in ALII:
-    #     bot.say("Alias {0} in use!".format(alias))
-    #     return
+    # dont overwrite alias command
+    if alias == "alias":
+        bot.say("Can't overwite $alias")
 
     raw_symbols = trigger.group(2)
-    split_symbols = map(lambda s: s.strip(), re.split(r"\s+", raw_symbols))[:10]
-    ALII[alias] = split_symbols
+    split_symbols = list(map(str.strip, re.split(r"\s+", raw_symbols)))[:10]
+
+    bot.db.set_plugin_value("pinance", f"alias_{alias}", split_symbols)
 
     bot.say("Alias ${0} set to: {1} 🚀🚀🚀".format(alias, ", ".join(split_symbols)))
-    json.dump(ALII, open("$alii.json", "w+"))
 
 
 @sopel.module.rule(r"\$([^ ]+)")
@@ -209,7 +197,5 @@ def alias_use(bot, trigger):
     if alias == "alias":
         return
 
-    if alias not in ALII:
-        return
-
-    write_ticker(bot, ALII[alias])
+    if symbols := bot.db.get_plugin_value("pinance", f"alias_{alias}"):
+        write_ticker(bot, symbols)
