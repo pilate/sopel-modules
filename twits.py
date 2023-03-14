@@ -108,16 +108,6 @@ def last_tweet(bot, trigger):
     write_twit(bot, tweet)
 
 
-@sopel.module.rule("\\.?\\.trump$")
-def trump_tweet(bot, trigger):
-    try:
-        tweet = get_latest("realDonaldTrump")
-    except Exception as e:
-        return
-
-    write_twit(bot, tweet)
-
-
 @sopel.module.rule(r".*twitter.com/(\S*)/status/(?P<id>\d+)")
 def specific_tweet(bot, trigger):
     tweet_id = trigger.groupdict()["id"]
