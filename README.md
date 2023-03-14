@@ -114,14 +114,6 @@ bot> A form of torture created by Pontius Pilate, the man who crucified the savi
 ```
 
 
-## weather
-Current weather lookup.
-```
-Pilate> ..wz 90210
-bot> Beverly Hills, CA, United States: 66 F (18.89 C), humidity 62%, wind chill 66 F (18.89 C) speed 7mph (11.0kph) from the south
-```
-
-
 ## youtube
 Print title and some meta information of pasted YouTube links. (Requires an API key)
 ```
