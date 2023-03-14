@@ -1,11 +1,12 @@
 import base64
 import logging
-import xml.etree.ElementTree as ElementTree
+import re
 from html.parser import HTMLParser
 
 import requests
 import sopel.config.types
 import sopel.module
+
 
 """
 Config should look like:
@@ -15,37 +16,38 @@ consumer_key=aaaaaaaaaaaaaaaaa
 consumer_secret=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 """
 
-BEARER = None
-
 
 class TwitterSection(sopel.config.types.StaticSection):
     consumer_key = sopel.config.types.ValidatedAttribute("consumer_key", str)
     consumer_secret = sopel.config.types.ValidatedAttribute("consumer_secret", str)
+    bearer = sopel.config.types.ValidatedAttribute("bearer", str)
 
 
 def setup(bot):
     bot.config.define_section("twitter", TwitterSection)
-    global BEARER
-    BEARER = get_bearer_token(bot)
+    if not bot.db.get_plugin_value("twits", "bearer"):
+        bot.db.set_plugin_value("twits", "bearer", get_bearer_token(bot))
 
 
 def configure(config):
     config.define_section("twitter", TwitterSection, validate=False)
     config.twitter.configure_setting("consumer_key", "Consumer key for Twitter")
     config.twitter.configure_setting("consumer_secret", "Consumer secret for Twitter")
+    config.twitter.configure_setting("bearer", "Bearer token for twitter")
 
 
 def get_bearer_token(bot):
     try:
+        if bearer := bot.config.twitter.bearer:
+            return bearer
         key = bot.config.twitter.consumer_key
         secret = bot.config.twitter.consumer_secret
-    except Exception as e:
+
+    except Exception as exc:
         logging.error(
-            "Missing consumer_key or consumer_secret configuration setting: {0}".format(
-                str(e)
-            )
+            "Missing consumer_key or consumer_secret configuration setting: %s", exc
         )
-        return
+        return ""
 
     joined_credentials = base64.b64encode(f"{key}:{secret}".encode())
     response = requests.post(
@@ -55,6 +57,7 @@ def get_bearer_token(bot):
             "Authorization": f"Basic {joined_credentials.decode()}",
             "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
         },
+        timeout=10,
     )
     if response.status_code != 200:
         raise Exception("Unable to obtain bearer token")
@@ -62,37 +65,18 @@ def get_bearer_token(bot):
     return response.json()["access_token"]
 
 
-def get_latest(user):
+def make_request(api, params, bearer):
     response = requests.get(
-        "https://api.twitter.com/1.1/statuses/user_timeline.json",
-        params={
-            "screen_name": user,
-            "count": 1,
-            "include_rts": False,
-            "tweet_mode": "extended",
-        },
+        f"https://api.twitter.com/1.1/statuses/{api}",
+        params=params,
         headers={
-            "Authorization": "Bearer {0}".format(BEARER),
+            "Authorization": f"Bearer {bearer}",
         },
+        timeout=10,
     )
 
     if response.status_code != 200:
-        raise Exception("Unable to request timeline")
-
-    return response.json()[0]
-
-
-def get_tweet(tweet):
-    response = requests.get(
-        "https://api.twitter.com/1.1/statuses/show.json",
-        params={"id": tweet, "tweet_mode": "extended"},
-        headers={
-            "Authorization": "Bearer {0}".format(BEARER),
-        },
-    )
-
-    if response.status_code != 200:
-        raise Exception("Unable to request tweet")
+        raise Exception("API request failed: %s (%d)", response, response.status_code)
 
     return response.json()
 
@@ -102,18 +86,39 @@ def write_twit(bot, tweet_data):
         text = tweet_data["full_text"]
     else:
         text = tweet_data["text"]
+
+    # strip newlies
     fixed_data = text.replace("\n", " ")
+    # merge whitespace
+    fixed_data = re.sub(r"\s+", " ", fixed_data)
+    # html entity unescape
     fixed_data = HTMLParser().unescape(fixed_data)
-    bot.say("@{0}: {1}".format(tweet_data["user"]["name"], fixed_data))
+
+    tweeter = tweet_data["user"]["name"]
+    bot.say(f"@{tweeter}: {fixed_data}")
 
 
 @sopel.module.rule("\\.?\\.tweet ([^ ]+)$")
 def last_tweet(bot, trigger):
+    bearer = bot.db.get_plugin_value("twits", "bearer")
+    if not bearer:
+        return
+
     tweeter = trigger.group(1).strip()
 
     try:
-        tweet = get_latest(tweeter)
-    except Exception as e:
+        tweet = make_request(
+            "user_timeline.json",
+            params={
+                "screen_name": tweeter,
+                "count": 1,
+                "include_rts": False,
+                "tweet_mode": "extended",
+            },
+            bearer=bearer,
+        )[0]
+    except Exception as exc:
+        print("boo", exc)
         return
 
     write_twit(bot, tweet)
@@ -121,7 +126,13 @@ def last_tweet(bot, trigger):
 
 @sopel.module.rule(r".*twitter.com/(\S*)/status/(?P<id>\d+)")
 def specific_tweet(bot, trigger):
+    bearer = bot.db.get_plugin_value("twits", "bearer")
+    if not bearer:
+        return
+
     tweet_id = trigger.groupdict()["id"]
-    tweet = get_tweet(tweet_id)
+    tweet = make_request(
+        "show.json", params={"id": tweet_id, "tweet_mode": "extended"}, bearer=bearer
+    )
 
     write_twit(bot, tweet)
