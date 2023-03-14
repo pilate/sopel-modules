@@ -3,9 +3,7 @@ import sopel.module
 
 
 def get_quotes():
-    tickers = requests.get(
-        f"https://www.bitstamp.net/api/v2/ticker/", timeout=10
-    ).json()
+    tickers = requests.get("https://www.bitstamp.net/api/v2/ticker/", timeout=10).json()
 
     usd_quotes = list(filter(lambda t: t["pair"].endswith("/USD"), tickers))
 
@@ -34,24 +32,3 @@ def bitstamp_lookup(bot, _):
 
     tickers = " | ".join(texts)
     bot.say(f"Bitstamp - {tickers}")
-
-
-"""
-Quote format:
-
-{
-    'timestamp': '1678770697',
-    'open': '24210',
-    'high': '24800',
-    'low': '21900',
-    'last': '24796',
-    'volume': '6198.52491590',
-    'vwap': '23454',
-    'bid': '24796',
-    'ask': '24797',
-    'open_24': '22447',
-    'percent_change_24': '10.46',
-    'pair': 'BTC/USD'
-}
-
-"""

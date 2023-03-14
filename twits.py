@@ -117,8 +117,9 @@ def last_tweet(bot, trigger):
             },
             bearer=bearer,
         )[0]
-    except Exception as exc:
-        print("boo", exc)
+
+    except Exception:
+        bot.say(f"Failed to get latest tweet for {tweeter}")
         return
 
     write_twit(bot, tweet)

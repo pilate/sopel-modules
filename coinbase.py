@@ -29,9 +29,11 @@ def cb_lookup(bot, _):
 
     texts = []
     for pair, price in prices:
-        texts.append("{coin}: ${price:,}".format(coin=pair.split("-")[0], price=price))
+        coin = pair.split("-")[0]
+        texts.append(f"{coin}: ${price:,}")
 
-    bot.say("Coinbase - {0}".format(", ".join(texts)))
+    tickers = ", ".join(texts)
+    bot.say(f"Coinbase - {tickers}")
 
 
 @sopel.module.rule("\\.?\\.gd(ax)?e?$")

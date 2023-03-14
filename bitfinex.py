@@ -1,17 +1,16 @@
-import multiprocessing
-
 import requests
-
 import sopel.module
 
 
-
 def get_symbols():
-    return requests.get("https://api.bitfinex.com/v1/symbols").json()
+    return requests.get("https://api.bitfinex.com/v1/symbols", timeout=10).json()
 
 
 def get_ticker(symbol):
-    return (symbol, requests.get("https://api.bitfinex.com/v1/pubticker/{0}".format(symbol)).json())
+    response = requests.get(
+        f"https://api.bitfinex.com/v1/pubticker/{symbol}", timeout=10
+    ).json()
+    return (symbol, response)
 
 
 def get_tickers(symbols):
@@ -20,13 +19,13 @@ def get_tickers(symbols):
 
 @sopel.module.rule("\\.?\\.bfx$")
 @sopel.module.rule("\\.?\\.(bit)?finex$")
-def bitfinex_lookup(bot, trigger):
-    tickers = get_tickers(["btcusd", "ethusd", "ltcusd", "etcusd",  "btgusd"])
+def bitfinex_lookup(bot, _):
+    tickers = get_tickers(["btcusd", "ethusd", "ltcusd", "etcusd", "btgusd"])
 
     texts = []
     for symbol, ticker in tickers:
-        texts.append("{market}: ${price:,.02f}".format(
-            market=symbol.upper(),
-            price=float(ticker["last_price"])))
+        price = float(ticker["last_price"])
+        texts.append(f"{symbol.upper()}: ${price:,.02f}")
 
-    bot.say("Bitfinex - {0}".format(", ".join(texts)))
+    tickers = ", ".join(texts)
+    bot.say(f"Bitfinex - {tickers}")

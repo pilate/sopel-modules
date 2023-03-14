@@ -13,6 +13,7 @@ def get_exchange():
     rates = requests.get(
         "https://gw.bithumb.com/exchange/v1/comn/exrate", timeout=10
     ).json()
+
     for rate in rates["data"]["currencyRateList"]:
         if rate["currency"] == "USD":
             return rate["rate"]
@@ -68,7 +69,6 @@ def make_line_complex(symbol, quote):
 @sopel.module.rule("\\.?\\.(bit)?t?humb$")
 def thumb_lookup(bot, _):
     quotes = get_quotes()
-    exchange = get_exchange()
 
     response = make_line_simple(quotes, list(quotes.keys())[:10])
     bot.say("bithumb - {0}".format(response))
