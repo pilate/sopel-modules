@@ -1,5 +1,4 @@
 import datetime
-import time
 
 import requests
 import sopel.module
@@ -17,7 +16,9 @@ def get_launches(name=""):
     now = now.replace(microsecond=0)
 
     response = requests.get(
-        "https://lldev.thespacedevs.com/2.2.0/launch/upcoming/", params=params
+        "https://lldev.thespacedevs.com/2.2.0/launch/upcoming/",
+        params=params,
+        timeout=10,
     ).json()
 
     matching = []
