@@ -12,7 +12,7 @@ def get_data(phrase):
 def phrase_lookup(bot, trigger):
     phrase = trigger.group(1)
     results = get_data(phrase)
-    print(results)
+
     if not results.get("list"):
         return
 
