@@ -1,182 +1,20 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from pprint import pprint
 import json
 import os
 import re
 import time
+from pprint import pprint
 
-import sopel.module
 import requests
+import sopel.module
 
 
-def retry(times=10):
-    def wrap(function):
-        def f(*args, **kwargs):
-            attempts = 0
-            while attempts < times:
-                try:
-                    return function(*args, **kwargs)
-                except:
-                    time.sleep(1)
-                    attempts += 1
-            raise Exception("Retry limit exceeded")
-
-        return f
-
-    return wrap
-
-
-@retry(times=10)
-def get_data_cnbc(symbol):
-    response = requests.get(
-        "https://quote.cnbc.com/quote-html-webservice/restQuote/symbolType/symbol",
-        params={
-            "symbols": symbol,
-            "requestMethod": "itv",
-            "exthrs": "1",
-            "extmode": "ALL",
-            "fund": "1",
-            "events": "0",
-            "partnerId": "2",
-            "output": "json",
-            "noform": 1,
-        },
-        headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
-    )
-
-    if response.status_code != 200:
-        return []
-
-    quotes = response.json()["FormattedQuoteResult"]["FormattedQuote"]
-
-    # Always return a list
-    if type(quotes) != list:
-        quotes = [quotes]
-
-    # Remove invalid symbols
-    quotes = filter(lambda q: "last" in q, quotes)
-
-    for quote in quotes:
-        for key in ["change", "change_pct", "last", "open", "previous_day_closing"]:
-            if key not in quote:
-                quote[key] = 0
-            else:
-                no_pct = strip_formatting(quote[key])
-                if no_pct == "UNCH":
-                    quote[key] = 0
-                else:
-                    quote[key] = float(no_pct)
-
-        if "ExtendedMktQuote" in quote:
-            for key in ["change", "change_pct", "last", "volume"]:
-                if key not in quote["ExtendedMktQuote"]:
-                    quote["ExtendedMktQuote"][key] = "0.0"
-
-                no_pct = strip_formatting(quote["ExtendedMktQuote"][key])
-                if no_pct == "UNCH":
-                    quote["ExtendedMktQuote"][key] = 0.0
-                else:
-                    quote["ExtendedMktQuote"][key] = float(no_pct or 0.0)
-
-    return quotes
-
-
-def get_color(change):
-    color = ""
-    if change < 0:
-        color = "\x0304"
-    elif change > 0:
-        color = "\x0309"
-    return color
-
-
-TICKER_TPL = "({shortName} {last} {color}{change:+} {change_pct:+}%\x0f)"
-
-
-def write_ticker(bot, symbols):
-    quotes = get_data_cnbc("|".join(symbols))
-
-    lines = []
-    for quote in quotes:
-        color = get_color(quote["change"])
-        lines.append(TICKER_TPL.format(color=color, **quote))
-
-    bot.say(" ".join(lines))
-
-
-PRICE_TPL = "{last} {color}{change:+} {change_pct:+}%\x0f (Vol: {volume})"
-PRICE_TPL_NV = "{last} {color}{change:+} {change_pct:+}%\x0f"
-
-
-def strip_formatting(value):
-    if not value:
-        return value
-
-    value = value.rstrip("%").replace(",", "")
-    if value == "UNCH":
-        return value
-    return float(value)
-
-
-@sopel.module.rule(r"\.\. ((?:(?:[^ ]+)\s*)+)")
-def symbol_lookup(bot, trigger):
-    raw_symbols = trigger.group(1)
-
-    split_symbols = map(lambda s: s.strip(), re.split(r"\s+", raw_symbols))[:4]
-
-    try:
-        quotes = get_data_cnbc("|".join(split_symbols))
-    except Exception as e:
-        bot.say("Error retrieving data")
-        return
-
-    for quote in quotes:
-        color = get_color(quote["change"])
-
-        if "volume" in quote:
-            price_line = PRICE_TPL.format(color=color, **quote)
-        else:
-            price_line = PRICE_TPL_NV.format(color=color, **quote)
-
-        response = (
-            "{symbol} ({full_name}) Last: {price} | Daily Range: {low}-{high}".format(
-                symbol=quote["symbol"],
-                full_name=quote["name"],
-                price=price_line,
-                low=quote["low"],
-                high=quote["high"],
-            )
-        )
-
-        response += " | 52-Week Range: {ylow}-{yhigh}".format(
-            yhigh=quote["yrhiprice"],
-            ylow=quote["yrloprice"],
-            mktcap=quote.get("mktcapView", "0"),
-        )
-
-        if "mktcapView" in quote:
-            response += " | Cap: ${mktcap}".format(mktcap=quote["mktcapView"])
-
-        if quote.get("dividend", "0") != "0":
-            response += " | Dividend: {0}".format(
-                round(float(strip_formatting(quote["dividend"])), 3)
-            )
-            if "dividendyield" in quote:
-                response += " ({0}%)".format(
-                    round(float(strip_formatting(quote["dividendyield"])), 3)
-                )
-
-        if quote["curmktstatus"] != "REG_MKT":
-            if ("ExtendedMktQuote" in quote) and quote["ExtendedMktQuote"]["change"]:
-                ah_color = get_color(quote["ExtendedMktQuote"]["change"])
-                response += " | Postmkt: " + PRICE_TPL.format(
-                    color=ah_color, **quote["ExtendedMktQuote"]
-                )
-
-        bot.say(response)
-
+TICKER_TPL = "({shortName} {last} {color}{change} {change_pct}\x0f)"
+SINGLE_TPL = "{symbol} ({name}) Last: {price} | Daily Range: {low}-{high} | 52-Week Range: {yrloprice}-{yrhiprice}"
+PRICE_TPL = "{last} {color}{change} {change_pct}\x0f (Vol: {volume})"
+PRICE_TPL_NV = "{last} {color}{change} {change_pct}\x0f"
 
 SYMBOL_MAP = {
     "f(ore)?x": [
@@ -205,6 +43,131 @@ SYMBOL_MAP = {
 
 TRIGGERS = "|".join(SYMBOL_MAP.keys())
 
+ALII = "$alii.json"
+if os.path.exists(ALII):
+    ALII = json.load(open("$alii.json", "r"))
+else:
+    ALII = {}
+
+
+def retry(times=10):
+    def wrap(function):
+        def f(*args, **kwargs):
+            attempts = 0
+            while attempts < times:
+                try:
+                    return function(*args, **kwargs)
+                except:
+                    time.sleep(1)
+                    attempts += 1
+            raise Exception("Retry limit exceeded")
+
+        return f
+
+    return wrap
+
+
+@retry(times=10)
+def get_data_cnbc(symbol):
+    if isinstance(symbol, list):
+        symbol = "|".join(symbol)
+
+    response = requests.get(
+        "https://quote.cnbc.com/quote-html-webservice/restQuote/symbolType/symbol",
+        params={
+            "symbols": symbol,
+            "requestMethod": "itv",
+            "exthrs": "1",
+            "extmode": "ALL",
+            "fund": "1",
+            "events": "0",
+            "partnerId": "2",
+            "output": "json",
+            "noform": 1,
+        },
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
+    )
+
+    if response.status_code != 200:
+        return []
+
+    quotes = response.json()["FormattedQuoteResult"]["FormattedQuote"]
+
+    # Always return a list
+    if not isinstance(quotes, list):
+        quotes = [quotes]
+
+    # Remove symbols with no data
+    quotes = list(filter(lambda q: "last" in q, quotes))
+
+    for quote in quotes:
+        for key, value in quote.items():
+            if value == "UNCH":
+                quote[key] = "0"
+
+    return quotes
+
+
+def get_color(change):
+    if change.startswith("-"):
+        return "\x0304"
+    elif change.startswith("+"):
+        return "\x0309"
+    return ""
+
+
+def write_ticker(bot, symbols):
+    quotes = get_data_cnbc("|".join(symbols))
+
+    lines = []
+    for quote in quotes:
+        color = get_color(quote["change"])
+        lines.append(TICKER_TPL.format(color=color, **quote))
+
+    bot.say(" ".join(lines))
+
+
+@sopel.module.rule(r"\.\. ((?:(?:[^ ]+)\s*)+)")
+def symbol_lookup(bot, trigger):
+    raw_symbols = trigger.group(1)
+
+    split_symbols = list(map(str.strip, re.split(r"\s+", raw_symbols)))[:4]
+
+    try:
+        quotes = get_data_cnbc(split_symbols)
+    except Exception as e:
+        bot.say("Error retrieving data")
+        return
+
+    for quote in quotes:
+        color = get_color(quote["change"])
+
+        if "volume" in quote:
+            price_line = PRICE_TPL.format(color=color, **quote)
+        else:
+            price_line = PRICE_TPL_NV.format(color=color, **quote)
+
+        print(quote)
+        message = SINGLE_TPL
+
+        if "mktcapView" in quote:
+            message += " | Cap: ${mktcapView}"
+
+        if quote.get("dividend", "0") != "0":
+            message += " | Dividend: {dividend}"
+            if "dividendyield" in quote:
+                message += " ({dividendyield}%)"
+
+        if quote["curmktstatus"] != "REG_MKT":
+            if extended := quote.get("ExtendedMktQuote"):
+                if change := extended.get("change"):
+                    ah_color = get_color(change)
+                    message += " | Postmkt: " + PRICE_TPL.format(
+                        color=ah_color, **quote["ExtendedMktQuote"]
+                    )
+
+        bot.say(message.format(price=price_line, **quote))
+
 
 @sopel.module.rule("\\.?\\.({0})$".format(TRIGGERS))
 def zag_lookup(bot, trigger):
@@ -220,13 +183,6 @@ def zag_lookup(bot, trigger):
                 break
 
     write_ticker(bot, symbols)
-
-
-ALII = "$alii.json"
-if os.path.exists(ALII):
-    ALII = json.load(open("$alii.json", "r"))
-else:
-    ALII = {}
 
 
 @sopel.module.rule(r"\$alias ([^ ]+) ((?:(?:[^ ]+)\s*)+)")
