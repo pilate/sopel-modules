@@ -9,7 +9,11 @@ import sopel.module
 
 
 TICKER_TPL = "({shortName} {last} {color}{change} {change_pct}\x0f)"
-SINGLE_TPL = "{symbol} ({name}) Last: {price} | Daily Range: {low}-{high} | 52-Week Range: {yrloprice}-{yrhiprice}"
+
+SINGLE_TPL = "{symbol} ({name}) Last: {price}"
+SINGLE_TPL += " | Daily Range: {low}-{high}"
+SINGLE_TPL += " | 52-Week Range: {yrloprice}-{yrhiprice}"
+
 PRICE_TPL = "{last} {color}{change} {change_pct}\x0f (Vol: {volume})"
 PRICE_TPL_NV = "{last} {color}{change} {change_pct}\x0f"
 
@@ -42,17 +46,17 @@ TRIGGERS = "|".join(SYMBOL_MAP.keys())
 
 def retry(times=10):
     def wrap(function):
-        def f(*args, **kwargs):
+        def wrapped(*args, **kwargs):
             attempts = 0
             while attempts < times:
                 try:
                     return function(*args, **kwargs)
-                except:
+                except Exception:
                     time.sleep(1)
                     attempts += 1
             raise Exception("Retry limit exceeded")
 
-        return f
+        return wrapped
 
     return wrap
 
@@ -76,6 +80,7 @@ def get_data_cnbc(symbol):
             "noform": 1,
         },
         headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
+        timeout=5
     )
 
     if response.status_code != 200:
@@ -101,7 +106,7 @@ def get_data_cnbc(symbol):
 def get_color(change):
     if change.startswith("-"):
         return "\x0304"
-    elif change.startswith("+"):
+    if change.startswith("+"):
         return "\x0309"
     return ""
 
@@ -125,7 +130,7 @@ def symbol_lookup(bot, trigger):
 
     try:
         quotes = get_data_cnbc(split_symbols)
-    except Exception as e:
+    except Exception:
         bot.say("Error retrieving data")
         return
 
@@ -159,16 +164,18 @@ def symbol_lookup(bot, trigger):
         bot.say(message.format(price=price_line, **quote))
 
 
-@sopel.module.rule("\\.?\\.({0})$".format(TRIGGERS))
+@sopel.module.rule(f"\\.?\\.({TRIGGERS})$")
 def zag_lookup(bot, trigger):
     user_trigger = trigger.group(1).lower()
 
+    # key is the same as dict key
     if user_trigger in SYMBOL_MAP:
         symbols = SYMBOL_MAP[user_trigger]
 
+    # key is a regex
     else:
         for symbol in SYMBOL_MAP:
-            if re.search(symbol + "$", user_trigger):
+            if re.search(f"{symbol}$", user_trigger):
                 symbols = SYMBOL_MAP[symbol]
                 break
 
@@ -188,7 +195,8 @@ def alias_add(bot, trigger):
 
     bot.db.set_plugin_value("pinance", f"alias_{alias}", split_symbols)
 
-    bot.say("Alias ${0} set to: {1} 🚀🚀🚀".format(alias, ", ".join(split_symbols)))
+    symbols_str = ", ".join(split_symbols)
+    bot.say(f"Alias ${alias} set to: {symbols_str} 🚀🚀🚀")
 
 
 @sopel.module.rule(r"\$([^ ]+)")
