@@ -1,11 +1,10 @@
-import sopel.config.types
-import sopel.module
-
-import datetime
+from datetime import timedelta
+from datetime import datetime
 import time
 
 import requests
-
+import sopel.config.types
+import sopel.module
 
 
 """
@@ -22,8 +21,6 @@ https://developers.google.com/maps/documentation/timezone/get-api-key
 
 """
 
-API_KEY = None
-
 
 class GoogleSection(sopel.config.types.StaticSection):
     api_key = sopel.config.types.ValidatedAttribute("api_key", str)
@@ -31,12 +28,6 @@ class GoogleSection(sopel.config.types.StaticSection):
 
 def setup(bot):
     bot.config.define_section("google", GoogleSection)
-    global API_KEY
-    try:
-        API_KEY = bot.config.google.api_key
-    except Exception as e:
-        logging.error("Missing google api_key configuration setting: {0}".format(str(e)))
-        return
 
 
 def configure(config):
@@ -44,42 +35,51 @@ def configure(config):
     config.google.configure_setting("api_key", "API key for Google")
 
 
-def geo_lookup(location):
-    response = requests.get("https://maps.googleapis.com/maps/api/geocode/json", params={
-            "address": location,
-            "key": API_KEY
-        }).json()["results"]
+def geo_lookup(location, api_key):
+    response = requests.get(
+        "https://maps.googleapis.com/maps/api/geocode/json",
+        params={"address": location, "key": api_key},
+        timeout=10,
+    ).json()["results"]
+
     if response:
         return response[0]
 
 
-def time_lookup(geo_data):
-    if "geometry" not in geo_data:
-        return
-
+def time_lookup(geo_data, api_key):
     geo_loc = geo_data["geometry"]["location"]
 
-    lat_lng = "{0},{1}".format(geo_loc["lat"], geo_loc["lng"])
-    return requests.get("https://maps.googleapis.com/maps/api/timezone/json", params={
-        "location": lat_lng,
-        "timestamp": int(time.time()),
-        "key": API_KEY
-        }).json()
+    return requests.get(
+        "https://maps.googleapis.com/maps/api/timezone/json",
+        params={
+            "location": "{lat},{lng}".format(**geo_loc),
+            "timestamp": int(time.time()),
+            "key": api_key,
+        },
+        timeout=10,
+    ).json()
 
 
 @sopel.module.rule("\\.?\\.time (.+)$")
 def get_time(bot, trigger):
-    location = trigger.group(1).strip()
-
-    geo_data = geo_lookup(location)
-    if not geo_data:
+    if not bot.config.google.api_key:
         return
 
-    time_data = time_lookup(geo_data)
+    location = trigger.group(1).strip()
 
-    utc = datetime.datetime.utcnow().replace(microsecond=0)
-    delta = datetime.timedelta(seconds=time_data["rawOffset"] + time_data["dstOffset"])
+    geo_data = geo_lookup(location, bot.config.google.api_key)
+    if (not geo_data) or ("geometry" not in geo_data):
+        bot.say(f"Unable to find location: {location}")
+        return
+
+    time_data = time_lookup(geo_data, bot.config.google.api_key)
+
+    utc = datetime.utcnow().replace(microsecond=0)
+    delta = timedelta(seconds=time_data["rawOffset"] + time_data["dstOffset"])
+
+    location_name = geo_data["formatted_address"]
     modified = utc + delta
-
+    timezone = time_data["timeZoneId"]
     hours = int((delta.total_seconds() / 60 / 60) * 100)
-    bot.say("Time in {0} is: {1} ({2}, UTC{3:+05d})".format(geo_data["formatted_address"], str(modified), time_data["timeZoneId"], hours))
+
+    bot.say(f"Time in {location_name} is: {modified} ({timezone}, UTC{hours:+05d})")
