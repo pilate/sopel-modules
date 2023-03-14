@@ -32,7 +32,7 @@ def cb_lookup(bot, _):
         coin = pair.split("-")[0]
         texts.append(f"{coin}: ${price:,}")
 
-    tickers = ", ".join(texts)
+    tickers = " | ".join(texts)
     bot.say(f"Coinbase - {tickers}")
 
 
@@ -49,5 +49,5 @@ def gdax_lookup(bot, _):
                 volume=int(float(price["volume"])),
             )
         )
-    tickers = ", ".join(texts)
+    tickers = " | ".join(texts)
     bot.say(f"Coinbase Pro - {tickers}")

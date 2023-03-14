@@ -28,7 +28,8 @@ def bitstamp_lookup(bot, _):
         else:
             color = ""
 
-        texts.append("{pair}: {color}${last:,.02f}\x0f".format(color=color, **quote))
+        symbol = quote["pair"].rsplit("/")[0]
+        texts.append("{symbol}: {color}${last:,.02f}\x0f".format(symbol=symbol, color=color, **quote))
 
     tickers = " | ".join(texts)
     bot.say(f"Bitstamp - {tickers}")
