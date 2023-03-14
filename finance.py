@@ -172,10 +172,9 @@ def zag_lookup(bot, trigger):
 
     # key is a regex
     else:
-        for symbol in SYMBOL_MAP:
-            if re.search(f"{symbol}$", user_trigger):
-                symbols = SYMBOL_MAP[symbol]
-                break
+        for regex, tickers in SYMBOL_MAP.items():
+            if re.search(f"{regex}$", user_trigger):
+                symbols = tickers
 
     write_ticker(bot, symbols)
 
