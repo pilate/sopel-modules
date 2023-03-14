@@ -2,30 +2,57 @@ import requests
 import sopel.module
 
 
-def get_symbols():
-    return requests.get("https://api.bitfinex.com/v1/symbols", timeout=10).json()
+FIELDS = [
+    "bid",
+    "bid_size",
+    "ask",
+    "ask_size",
+    "daily_change",
+    "daily_change_relative",
+    "last_price",
+    "volume",
+    "high",
+    "low",
+]
 
 
-def get_ticker(symbol):
+def get_quotes():
     response = requests.get(
-        f"https://api.bitfinex.com/v1/pubticker/{symbol}", timeout=10
+        "https://api-pub.bitfinex.com/v2/tickers?symbols=ALL", timeout=10
     ).json()
-    return (symbol, response)
 
+    quotes = {}
+    for values in response:
+        if len(quotes) == 20:
+            break
 
-def get_tickers(symbols):
-    return map(get_ticker, symbols)
+        if not values[0].endswith("USD"):
+            continue
+
+        symbol = values.pop(0)[1:-3]
+        quote = dict(zip(FIELDS, map(float, values)))
+        quotes[symbol] = quote
+
+    return quotes
 
 
 @sopel.module.rule("\\.?\\.bfx$")
 @sopel.module.rule("\\.?\\.(bit)?finex$")
 def bitfinex_lookup(bot, _):
-    tickers = get_tickers(["btcusd", "ethusd", "ltcusd", "etcusd", "btgusd"])
+    quotes = get_quotes()
 
     texts = []
-    for symbol, ticker in tickers:
-        price = float(ticker["last_price"])
-        texts.append(f"{symbol.upper()}: ${price:,.02f}")
+    for symbol, quote in quotes.items():
+        price = quote["last_price"]
 
-    tickers = ", ".join(texts)
+        color = ""
+        if quote["daily_change"] > 0:
+            color = "\x0309"
+
+        if quote["daily_change"] < 0:
+            color = "\x0304"
+
+        texts.append(f"{symbol}: {color}${price:,.02f}\x0f")
+
+    tickers = " | ".join(texts)
     bot.say(f"Bitfinex - {tickers}")
