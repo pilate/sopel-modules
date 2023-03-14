@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 import re
 import time
-from pprint import pprint
 
 import requests
 import sopel.module
@@ -142,7 +141,6 @@ def symbol_lookup(bot, trigger):
         else:
             price_line = PRICE_TPL_NV.format(color=color, **quote)
 
-        print(quote)
         message = SINGLE_TPL
 
         if "mktcapView" in quote:

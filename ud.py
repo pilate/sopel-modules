@@ -20,7 +20,7 @@ def phrase_lookup(bot, trigger):
         "suki (tm)",
         "suki(tm)",
         "the new world religion (tm)",
-        "the new world religion(tm)" "\xc3\x89lite",
+        "the new world religion(tm)",
     ]:
         bot.say("RIP Pitz")
         return
