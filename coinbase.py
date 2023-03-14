@@ -1,12 +1,10 @@
 import requests
 import sopel.module
-from cachetools import TTLCache, cached
 
 
 PAIRS = ["BTC-USD", "BCH-USD", "ETH-USD", "ETC-USD", "LTC-USD"]
 
 
-@cached(TTLCache(100, ttl=60 * 5))
 def get_prices_coinbase():
     prices = []
     for pair in PAIRS:
@@ -18,7 +16,6 @@ def get_prices_coinbase():
     return prices
 
 
-@cached(TTLCache(100, ttl=60 * 5))
 def get_price_gdax(product_id):
     return requests.get(
         f"https://api.pro.coinbase.com/products/{product_id}/ticker", timeout=10
