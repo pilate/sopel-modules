@@ -40,16 +40,22 @@ def get_bearer_token(bot):
         key = bot.config.twitter.consumer_key
         secret = bot.config.twitter.consumer_secret
     except Exception as e:
-        logging.error("Missing consumer_key or consumer_secret configuration setting: {0}".format(str(e)))
+        logging.error(
+            "Missing consumer_key or consumer_secret configuration setting: {0}".format(
+                str(e)
+            )
+        )
         return
 
     joined_credentials = base64.b64encode(f"{key}:{secret}".encode())
-    response =requests.post("https://api.twitter.com/oauth2/token", data={
-            "grant_type":"client_credentials"
-        }, headers={
+    response = requests.post(
+        "https://api.twitter.com/oauth2/token",
+        data={"grant_type": "client_credentials"},
+        headers={
             "Authorization": f"Basic {joined_credentials.decode()}",
-            "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"
-        })
+            "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+        },
+    )
     if response.status_code != 200:
         raise Exception("Unable to obtain bearer token")
 
@@ -57,14 +63,18 @@ def get_bearer_token(bot):
 
 
 def get_latest(user):
-    response = requests.get("https://api.twitter.com/1.1/statuses/user_timeline.json", params={
+    response = requests.get(
+        "https://api.twitter.com/1.1/statuses/user_timeline.json",
+        params={
             "screen_name": user,
             "count": 1,
             "include_rts": False,
-            "tweet_mode": "extended"
-        }, headers={
+            "tweet_mode": "extended",
+        },
+        headers={
             "Authorization": "Bearer {0}".format(BEARER),
-        })
+        },
+    )
 
     if response.status_code != 200:
         raise Exception("Unable to request timeline")
@@ -73,12 +83,13 @@ def get_latest(user):
 
 
 def get_tweet(tweet):
-    response = requests.get("https://api.twitter.com/1.1/statuses/show.json", params={
-            "id": tweet,
-            "tweet_mode": "extended"
-        }, headers={
+    response = requests.get(
+        "https://api.twitter.com/1.1/statuses/show.json",
+        params={"id": tweet, "tweet_mode": "extended"},
+        headers={
             "Authorization": "Bearer {0}".format(BEARER),
-        })
+        },
+    )
 
     if response.status_code != 200:
         raise Exception("Unable to request tweet")
@@ -93,7 +104,7 @@ def write_twit(bot, tweet_data):
         text = tweet_data["text"]
     fixed_data = text.replace("\n", " ")
     fixed_data = HTMLParser().unescape(fixed_data)
-    bot.say(u"@{0}: {1}".format(tweet_data["user"]["name"], fixed_data))
+    bot.say("@{0}: {1}".format(tweet_data["user"]["name"], fixed_data))
 
 
 @sopel.module.rule("\\.?\\.tweet ([^ ]+)$")
