@@ -1,5 +1,6 @@
-import sopel.module
 import random
+
+import sopel.module
 
 
 answers = [
