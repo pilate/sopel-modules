@@ -1,56 +1,72 @@
-import sopel.module
-
-import requests
-
 import datetime
 import time
 
+import requests
+import sopel.module
 
 
-def get_launch_data(name=""):
+DATE_FMT = "%Y-%m-%dT%H:%M:%SZ"
+
+
+def get_launches(name=""):
+    params = {}
     if name:
-        name = "/" + name
+        params = {"search": name}
 
-    launches = requests.get("https://launchlibrary.net/1.2/launch{0}".format(name), params={
-        "mode": "verbose",
-        "startdate": datetime.datetime.utcnow().date(),
-    }).json()
+    now = datetime.datetime.utcnow()
+    now = now.replace(microsecond=0)
 
-    if not launches["count"]:
-        return []
+    response = requests.get(
+        "https://lldev.thespacedevs.com/2.2.0/launch/upcoming/", params=params
+    ).json()
 
-    # Filter out launches that already happened
-    launches = filter(lambda l: l["status"] not in [3, 4], launches["launches"])
+    matching = []
+    for launch in response["results"]:
+        if launch["status"]["id"] != 1:
+            continue
 
-    return launches
+        launch_time = datetime.datetime.strptime(launch["net"], DATE_FMT)
+        if launch_time < now:
+            continue
+
+        launch["net_diff"] = launch_time - now
+
+        matching.append(launch)
+
+    return matching
 
 
-def print_launch_data(bot, launch, target=None):
-    types = ", ".join(map(lambda l: l["typeName"], launch["missions"]))
-
-    line = "(Rocket: {name}) (Payload Type: {type}) (Where: {location}) (When: {net})".format(
-        name=launch["rocket"]["name"],
-        type=types,
-        location=launch["location"]["name"],
-        net=launch["net"])
-
-    # If we have a launch time, calculate the time remaining
-    if launch["netstamp"]:
-        delta = datetime.timedelta(seconds=launch["netstamp"] - int(time.time()))
-        line += " (Countdown: {delta})".format(delta=delta)
-
-    if not target:
-        bot.say(line)
+def flatten(root, thing, prefix=""):
+    if isinstance(thing, dict):
+        for key, value in thing.items():
+            flatten(root, value, f"{prefix}_{key}")
+    elif isinstance(thing, list):
+        for counter, value in enumerate(thing):
+            flatten(root, value, f"{prefix}_{counter}")
     else:
-        bot.msg(target, line)
+        root[prefix] = thing
+
+    return root
 
 
 @sopel.module.rule("\\.?\\.launch(?: (.+))?$")
 def next_launch(bot, trigger):
     name = trigger.group(1) or ""
 
-    data = get_launch_data(name.strip())
-    if data:
-        print_launch_data(bot, data[0])
-    else:
-        bot.say("No launches found.")
+    data = get_launches(name)
+    if not data:
+        bot.say("No launches found")
+        return
+
+    launch = data[0]
+    flattened = flatten({}, launch)
+
+    line = "{_name}"
+    line += " | Rocket: {_rocket_configuration_full_name}"
+    if launch.get("mission"):
+        line += " | Mission: {_mission_type}, {_mission_orbit_name}"
+    if launch.get("pad"):
+        line += " | Pad: {_pad_name}, {_pad_location_name}"
+    line += " | Countdown: {_net_diff}"
+
+    bot.say(line.format(**flattened))
