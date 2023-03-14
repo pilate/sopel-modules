@@ -1,97 +1,87 @@
 import requests
-
 import sopel.module
 
 
-
-def get_quotes(listed=True):
-    response = requests.get("https://api.bithumb.com/public/ticker/ALL").json()
-    if response["status"] != "0000":
-        return []
-
-    list_data = []
-    data = response["data"]
-    del data["date"]
-    for coin, values in data.iteritems():
-        for key, value in values.iteritems():
-            values[key] = float(value)
-        values["symbol"] = coin
-        list_data.append(values)
-
-    if listed:
-        list_data.sort(key=lambda l: l["buy_price"], reverse=True)
-        return list_data
-    return data
+SHORT_TPL = "{symbol}: {color}${closing_price:,.02f}\x0f"
+LONG_TPL = (
+    SHORT_TPL
+    + " (24h Volume: {units_traded_24H:,.02f}) (24h Range: {min_price:,.02f}-{max_price:,.02f})"
+)
 
 
 def get_exchange():
-    rates = requests.get("https://www.bithumb.com/resources/csv/CurrencyRate.json").json()
-    currencies = {}
-    for rate in rates:
-        currencies[rate["Currency"]] = float(rate["Rate"])
-    return currencies
+    rates = requests.get(
+        "https://gw.bithumb.com/exchange/v1/comn/exrate", timeout=10
+    ).json()
+    for rate in rates["data"]["currencyRateList"]:
+        if rate["currency"] == "USD":
+            return rate["rate"]
 
 
-def price_fix(quote, exchange, to="USD"):
-    for key, value in quote.items():
-        if key.endswith("_price"):
-            quote[key] = value / exchange[to]
+def get_quotes():
+    response = requests.get(
+        "https://api.bithumb.com/public/ticker/ALL",
+        headers={"accept": "application/json"},
+        timeout=10,
+    ).json()
 
-
-def make_line_simple(quotes, exchange, symbols):
-    lines = []
-
-    for quote in quotes:
-        if quote["symbol"] not in symbols:
+    exchange_rate = get_exchange()
+    for symbol, quote in response["data"].items():
+        if symbol == "date":
             continue
-        price_fix(quote, exchange)
-        lines.append("{symbol}: ${closing_price:,.02f}".format(**quote))
 
-    return ", ".join(lines)
+        for key, value in quote.items():
+            if key.endswith("_price"):
+                quote[key] = float(value) / exchange_rate
+            else:
+                quote[key] = float(value)
+
+    return response["data"]
 
 
-TEMPLATE = "{symbol} - ${closing_price:,.02f} (Buy: ${buy_price:,.02f}) (Sell: ${sell_price:,.02f}) (24h Volume: {volume_1day:,.02f}) (24h Range: {min_price:,.02f}-{max_price:,.02f})"
-def make_line_complex(symbol, quote, exchange):
-    price_fix(quote, exchange)
-    return TEMPLATE.format(**quote)
+def get_color(quote):
+    if quote["closing_price"] > float(quote["opening_price"]):
+        return "\x0309"
+
+    if quote["closing_price"] < float(quote["opening_price"]):
+        return "\x0304"
+
+    return ""
+
+
+def make_line_simple(quotes, symbols):
+    lines = []
+    for symbol in symbols:
+        if quote := quotes.get(symbol):
+            lines.append(
+                SHORT_TPL.format(symbol=symbol, color=get_color(quote), **quote)
+            )
+
+    return " | ".join(lines)
+
+
+def make_line_complex(symbol, quote):
+    return LONG_TPL.format(symbol=symbol, color=get_color(quote), **quote)
 
 
 @sopel.module.rule("\\.?\\.bth$")
 @sopel.module.rule("\\.?\\.(bit)?t?humb$")
-def thumb_lookup(bot, trigger):
+def thumb_lookup(bot, _):
     quotes = get_quotes()
     exchange = get_exchange()
-    response = make_line_simple(quotes, exchange, ["BTC", "ETH", "DASH", "LTC", "BCH"])
+
+    response = make_line_simple(quotes, list(quotes.keys())[:10])
     bot.say("bithumb - {0}".format(response))
 
 
 @sopel.module.rule("\\.?\\.bth ((?:(?:[^ ]+) ?)+)$")
 @sopel.module.rule("\\.?\\.(?:bit)?t?humb ((?:(?:[^ ]+) ?)+)$")
 def thumb_lookup_each(bot, trigger):
-    quotes = get_quotes(listed=False)
-    exchange = get_exchange()
-    
+    quotes = get_quotes()
+
     raw = trigger.group(1)
-    symbols = map(lambda s: s.strip().upper(), raw.split())[:4]
-    for symbol in symbols:
+    symbols = map(lambda s: s.strip().upper(), raw.split())
+    for symbol in list(symbols)[:4]:
         if symbol not in quotes:
             continue
-        bot.say(make_line_complex(symbol, quotes[symbol], exchange))
-
-
-"""
-Quote format:
-
-"BTC": {
-    "opening_price": "11781000",
-    "closing_price": "12703000",
-    "min_price": "11649000",
-    "max_price": "13624000",
-    "average_price": "12702694.9755",
-    "units_traded": "70069.14538508",
-    "volume_1day": "70069.14538508",
-    "volume_7day": "285853.74509918",
-    "buy_price": "12718000",
-    "sell_price": "12729000"
-}
-"""
+        bot.say(make_line_complex(symbol, quotes[symbol]))
