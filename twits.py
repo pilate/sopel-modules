@@ -1,13 +1,11 @@
-from HTMLParser import HTMLParser
-import xml.etree.ElementTree as ElementTree
 import base64
 import logging
+import xml.etree.ElementTree as ElementTree
+from html.parser import HTMLParser
 
+import requests
 import sopel.config.types
 import sopel.module
-import requests
-
-
 
 """
 Config should look like:
@@ -45,14 +43,13 @@ def get_bearer_token(bot):
         logging.error("Missing consumer_key or consumer_secret configuration setting: {0}".format(str(e)))
         return
 
-    joined_credentials = base64.b64encode("{0}:{1}".format(key, secret))
+    joined_credentials = base64.b64encode(f"{key}:{secret}".encode())
     response =requests.post("https://api.twitter.com/oauth2/token", data={
             "grant_type":"client_credentials"
         }, headers={
-            "Authorization": "Basic {0}".format(joined_credentials),
+            "Authorization": f"Basic {joined_credentials.decode()}",
             "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"
         })
-
     if response.status_code != 200:
         raise Exception("Unable to obtain bearer token")
 
