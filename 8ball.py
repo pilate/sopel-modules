@@ -1,5 +1,6 @@
-import sopel
 import random
+
+import sopel.module
 
 
 answers = [
@@ -31,4 +32,4 @@ answers = [
 
 @sopel.module.rule("^\\.?\\.8(ball)?s?")
 def ball(bot, trigger):
-    bot.say("{0}: {1}".format(trigger.nick, random.choice(answers)))
+    bot.say(f"{trigger.nick}: {random.choice(answers)}")

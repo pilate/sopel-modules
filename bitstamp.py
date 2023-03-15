@@ -1,51 +1,35 @@
 import requests
-
 import sopel.module
 
 
+def get_quotes():
+    tickers = requests.get("https://www.bitstamp.net/api/v2/ticker/", timeout=10).json()
 
-def get_pairs():
-    return requests.get("https://www.bitstamp.net/api/v2/trading-pairs-info/").json()
+    usd_quotes = list(filter(lambda t: t["pair"].endswith("/USD"), tickers))
 
+    for quote in usd_quotes:
+        quote["open"] = float(quote["open"])
+        quote["last"] = float(quote["last"])
 
-def get_ticker(pair):
-    return requests.get("https://www.bitstamp.net/api/v2/ticker/{0}/".format(pair)).json()
+    return usd_quotes[:20]
 
 
 @sopel.module.rule("\\.?\\.(bit)?stamp$")
 @sopel.module.rule("\\.?\\.bs$")
-def bitstamp_lookup(bot, trigger):
-    pairs = get_pairs()
-    pairs = filter(lambda p: "USD" in p["name"], pairs)
-
-    quotes = []
-    for pair in pairs:
-        quote = get_ticker(pair["url_symbol"])
-        quote["pair"] = pair
-        quotes.append(quote)
-    quotes.sort(key=lambda p: float(p["last"]), reverse=True)  
+def bitstamp_lookup(bot, _):
+    quotes = get_quotes()
 
     texts = []
     for quote in quotes:
-        texts.append("{market}: ${price:,.02f}".format(
-            market=quote["pair"]["name"],
-            price=float(quote["last"])))
+        if quote["last"] > float(quote["open_24"]):
+            color = "\x0309"
+        elif quote["last"] < float(quote["open_24"]):
+            color = "\x0304"
+        else:
+            color = ""
 
-    bot.say("Bitstamp - {0}".format(", ".join(texts)))
+        symbol = quote["pair"].rsplit("/")[0]
+        texts.append("{symbol}: {color}${last:,.02f}\x0f".format(symbol=symbol, color=color, **quote))
 
-
-"""
-Quote format:
-
-{
-    "high": "11082.00",
-    "last": "11044.46",
-    "timestamp": "1512179547",
-    "bid": "11044.63",
-    "vwap": "10362.04",
-    "volume": "16730.31545647",
-    "low": "9370.11",
-    "ask": "11057.98",
-    "open": "10840.45"
-}
-"""
+    tickers = " | ".join(texts)
+    bot.say(f"Bitstamp - {tickers}")

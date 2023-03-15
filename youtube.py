@@ -6,7 +6,6 @@ import sopel.module
 import requests
 
 
-
 """
 Config should look like:
 
@@ -15,8 +14,8 @@ api_key=zzzzzzzzzzzzzzzzzzzz
 """
 
 
-TPL = u"You\x0300,04Tube\x0f - {title} | Duration: {duration} | Views: {views:,}"
-DURATION_RE = re.compile("PT(?P<h>\d+H)?(?P<m>\d+M)?(?P<s>\d+S)?")
+TPL = "You\x0300,04Tube\x0f - {title} | Duration: {duration} | Views: {views:,}"
+DURATION_RE = re.compile(r"PT(?P<h>\d+H)?(?P<m>\d+M)?(?P<s>\d+S)?")
 
 
 class YouTubeSection(sopel.config.types.StaticSection):
@@ -33,14 +32,18 @@ def configure(config):
 
 
 def get_data(video_id, api_key):
-    response = requests.get("https://www.googleapis.com/youtube/v3/videos", params={
-        "id": video_id,
-        "key": api_key,
-        "part": "contentDetails,snippet,statistics"
-    })
+    response = requests.get(
+        "https://www.googleapis.com/youtube/v3/videos",
+        params={
+            "id": video_id,
+            "key": api_key,
+            "part": "contentDetails,snippet,statistics",
+        },
+        timeout=10,
+    )
 
     if response.status_code != 200:
-        raise Exception("Failed to lookup title")
+        return {}
 
     return response.json()
 
@@ -53,8 +56,10 @@ def parse_duration(data):
     match = DURATION_RE.match(data["contentDetails"]["duration"]).groupdict()
     duration = []
     for key in "hms":
-        if match.get(key):
-            duration.append("{0:02d}".format(int(match[key][:-1])))
+        if value := match.get(key):
+            # strip 'H' 'M' 'S' from values
+            int_value = int(value[:-1])
+            duration.append(f"{int_value:02d}")
         else:
             duration.append("00")
 
@@ -64,19 +69,27 @@ def parse_duration(data):
 @sopel.module.rule(r".*youtube.com/watch\S*v=(?P<vid>[\w-]+)")
 @sopel.module.rule(r".*youtu.be/([\w-]+)")
 def title_lookup(bot, trigger):
+    if trigger.sender.lower() == "#chases":
+        return
+
     try:
         key = bot.config.youtube.api_key
-    except:
+    except Exception:
         logging.error("Missing api_key configuration setting")
+        return
+
+    if trigger.args[0].lower() in ["#hardballs", "#policechases"]:
         return
 
     yt_data = get_data(trigger.groups(1), key)["items"]
     if not yt_data:
+        bot.say("Failed to look up title")
         return
 
-    duration = parse_duration(yt_data[0])
-
-    bot.say(TPL.format(
-        title=yt_data[0]["snippet"]["title"],
-        duration=duration,
-        views=long(yt_data[0]["statistics"]["viewCount"])))
+    bot.say(
+        TPL.format(
+            title=yt_data[0]["snippet"]["title"],
+            duration=parse_duration(yt_data[0]),
+            views=int(yt_data[0]["statistics"]["viewCount"]),
+        )
+    )

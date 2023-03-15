@@ -1,34 +1,73 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
-from pprint import pprint
-import json
-import os
 import re
 import time
 
-import sopel.module
 import requests
+import sopel.module
+
+
+TICKER_TPL = "({shortName} {last} {color}{change} {change_pct}\x0f)"
+
+SINGLE_TPL = "{symbol} ({name}) Last: {price}"
+SINGLE_TPL += " | Daily Range: {low}-{high}"
+SINGLE_TPL += " | 52-Week Range: {yrloprice}-{yrhiprice}"
+
+PRICE_TPL = "{last} {color}{change} {change_pct}\x0f (Vol: {volume})"
+PRICE_TPL_NV = "{last} {color}{change} {change_pct}\x0f"
+
+SYMBOL_MAP = {
+    "f(ore)?x": [
+        "EUR=",
+        "GBP=",
+        "JPY=",
+        "CHF=",
+        "AUD=",
+        "USDCAD",
+        "NZD=",
+        "EURJPY=",
+        "EURCHF=",
+        "EURGBP=",
+        "CADUSD=",
+        "CNYUSD=",
+        "RUB=",
+    ],
+    "b": ["US2Y", "US5Y", "US7Y", "US10Y", "US30Y"],
+    "rtc[ou]m": ["@CL.1", "@HG.1", "@SI.1", "@GC.1", "@NG.1"],
+    "us": [".DJI", ".SPX", ".IXIC", ".NDX", ".RUT"],
+    "fus": ["@DJ.1", "@SP.1", "@ND.1"],
+    "(ca|eh)": [".GSPTSE"],
+    "eu": [".GDAXI", ".FTSE", ".FCHI"],
+    "asia": [".N225", ".HSI", ".SSEC"],
+}
+TRIGGERS = "|".join(SYMBOL_MAP.keys())
 
 
 def retry(times=10):
     def wrap(function):
-        def f(*args, **kwargs):
+        def wrapped(*args, **kwargs):
             attempts = 0
             while attempts < times:
                 try:
                     return function(*args, **kwargs)
-                except:
+                except Exception:
                     time.sleep(1)
                     attempts += 1
             raise Exception("Retry limit exceeded")
-        return f
+
+        return wrapped
+
     return wrap
 
 
 @retry(times=10)
 def get_data_cnbc(symbol):
-    response = requests.get("https://quote.cnbc.com/quote-html-webservice/restQuote/symbolType/symbol", params={
+    if isinstance(symbol, list):
+        symbol = "|".join(symbol)
+
+    response = requests.get(
+        "https://quote.cnbc.com/quote-html-webservice/restQuote/symbolType/symbol",
+        params={
             "symbols": symbol,
             "requestMethod": "itv",
             "exthrs": "1",
@@ -37,11 +76,11 @@ def get_data_cnbc(symbol):
             "events": "0",
             "partnerId": "2",
             "output": "json",
-            "noform": 1
+            "noform": 1,
         },
-        headers={
-            "Cache-Control": "no-cache, no-store, must-revalidate"
-        })
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
+        timeout=5
+    )
 
     if response.status_code != 200:
         return []
@@ -49,68 +88,28 @@ def get_data_cnbc(symbol):
     quotes = response.json()["FormattedQuoteResult"]["FormattedQuote"]
 
     # Always return a list
-    if type(quotes) != list:
+    if not isinstance(quotes, list):
         quotes = [quotes]
 
-    # Remove invalid symbols
-    quotes = filter(lambda q: "last" in q, quotes)
+    # Remove symbols with no data
+    quotes = list(filter(lambda q: "last" in q, quotes))
 
     for quote in quotes:
-        for key in ["change", "change_pct", "last", "open", "previous_day_closing"]:
-            if key not in quote:
-                quote[key] = 0
-            else:
-                no_pct = strip_formatting(quote[key])
-                if no_pct == "UNCH":
-                    quote[key] = 0
-                else:
-                    quote[key] = float(no_pct)
-
-
-        # print(json.dumps(quote))
-        if "ExtendedMktQuote" in quote:
-            for key in ["change", "change_pct", "last", "volume"]:
-                if key not in quote["ExtendedMktQuote"]:
-                    quote["ExtendedMktQuote"][key] = "0.0"
-
-                no_pct = strip_formatting(quote["ExtendedMktQuote"][key])
-                if no_pct == "UNCH":
-                    quote["ExtendedMktQuote"][key] = 0.0
-                else:
-                    quote["ExtendedMktQuote"][key] = float(no_pct or 0.0)
-
-    return quotes
-
-
-@retry(times=10)
-def get_data_yahoo(symbols):
-    in_str = ", ".join(map(lambda s: "'{0}'".format(s), symbols))
-    response = requests.get("https://query.yahooapis.com/v1/public/yql", params={
-            "q": "select * from yahoo.finance.quotes where symbol in ({0})".format(in_str),
-            "format": "json",
-            "env": "store://datatables.org/alltableswithkeys"
-        })
-
-    if response.status_code != 200:
-        return {}
-
-    quotes = response.json()["query"]["results"]["quote"]
-    if type(quotes) != list:
-        return [quotes]
+        for key, value in quote.items():
+            if value == "UNCH":
+                quote[key] = "0"
 
     return quotes
 
 
 def get_color(change):
-    color = ""
-    if change < 0:
-        color = "\x0304"
-    elif change > 0:
-        color = "\x0309"
-    return color
+    if change.startswith("-"):
+        return "\x0304"
+    if change.startswith("+"):
+        return "\x0309"
+    return ""
 
 
-TICKER_TPL = "({shortName} {last} {color}{change:+} {change_pct:+}%\x0f)"
 def write_ticker(bot, symbols):
     quotes = get_data_cnbc("|".join(symbols))
 
@@ -122,29 +121,15 @@ def write_ticker(bot, symbols):
     bot.say(" ".join(lines))
 
 
-PRICE_TPL = "{last} {color}{change:+} {change_pct:+}%\x0f (Vol: {volume})"
-PRICE_TPL_NV = "{last} {color}{change:+} {change_pct:+}%\x0f"
-
-
-def strip_formatting(value):
-    if not value:
-        return value
-
-    value = value.rstrip("%").replace(",", "")
-    if value == "UNCH":
-        return value
-    return float(value)
-
-
 @sopel.module.rule(r"\.\. ((?:(?:[^ ]+)\s*)+)")
 def symbol_lookup(bot, trigger):
     raw_symbols = trigger.group(1)
 
-    split_symbols = map(lambda s: s.strip(), re.split(r"\s+", raw_symbols))[:4]
+    split_symbols = list(map(str.strip, re.split(r"\s+", raw_symbols)))[:4]
 
     try:
-        quotes = get_data_cnbc("|".join(split_symbols))
-    except Exception as e:
+        quotes = get_data_cnbc(split_symbols)
+    except Exception:
         bot.say("Error retrieving data")
         return
 
@@ -156,113 +141,59 @@ def symbol_lookup(bot, trigger):
         else:
             price_line = PRICE_TPL_NV.format(color=color, **quote)
 
-        response = "{symbol} ({full_name}) Last: {price} | Daily Range: {low}-{high}".format(
-            symbol=quote["symbol"],
-            full_name=quote["name"],
-            price=price_line,
-            low=quote["low"],
-            high=quote["high"])
-
-        response += " | 52-Week Range: {ylow}-{yhigh}".format(
-            yhigh=quote["yrhiprice"],
-            ylow=quote["yrloprice"],
-            mktcap=quote.get("mktcapView", "0"))
+        message = SINGLE_TPL
 
         if "mktcapView" in quote:
-            response += " | Cap: ${mktcap}".format(mktcap=quote["mktcapView"])
+            message += " | Cap: ${mktcapView}"
 
-        if quote.get("dividend", '0') != '0':
-            response += " | Dividend: {0}".format(
-                round(float(strip_formatting(quote["dividend"])), 3))
+        if quote.get("dividend", "0") != "0":
+            message += " | Dividend: {dividend}"
             if "dividendyield" in quote:
-                response += " ({0}%)".format(round(float(strip_formatting(quote["dividendyield"])), 3))
+                message += " ({dividendyield}%)"
 
         if quote["curmktstatus"] != "REG_MKT":
-            if ("ExtendedMktQuote" in quote) and quote["ExtendedMktQuote"]["change"]:
-                ah_color = get_color(quote["ExtendedMktQuote"]["change"])
-                response += " | Postmkt: " + PRICE_TPL.format(color=ah_color, **quote["ExtendedMktQuote"])
+            if extended := quote.get("ExtendedMktQuote"):
+                if change := extended.get("change"):
+                    ah_color = get_color(change)
+                    message += " | Postmkt: " + PRICE_TPL.format(
+                        color=ah_color, **quote["ExtendedMktQuote"]
+                    )
 
-        bot.say(response)
+        bot.say(message.format(price=price_line, **quote))
 
 
-SYMBOL_MAP = {
-    "f(ore)?x": ["EUR=", "GBP=", "JPY=", "CHF=", "AUD=", "USDCAD", "NZD=", "EURJPY=", "EURCHF=", "EURGBP=", "CADUSD=", "CNYUSD=", "RUB="],
-    "b": ["US2Y", "US5Y", "US7Y", "US10Y", "US30Y"],
-    "rtc[ou]m": ["@CL.1", "@HG.1", "@SI.1", "@GC.1", "@NG.1"],
-    "us": [".DJI", ".SPX", ".IXIC", ".NDX", ".RUT"],
-    "fus": ["@DJ.1", "@SP.1", "@ND.1"],
-    "(ca|eh)": [".GSPTSE"],
-    "eu": [".GDAXI", ".FTSE", ".FCHI"],
-    "asia": [".N225", ".HSI", ".SSEC"]
-}
-
-TRIGGERS = "|".join(SYMBOL_MAP.keys())
-@sopel.module.rule("\\.?\\.({0})$".format(TRIGGERS))
+@sopel.module.rule(f"\\.?\\.({TRIGGERS})$")
 def zag_lookup(bot, trigger):
     user_trigger = trigger.group(1).lower()
 
+    # key is the same as dict key
     if user_trigger in SYMBOL_MAP:
         symbols = SYMBOL_MAP[user_trigger]
 
+    # key is a regex
     else:
-        for symbol in SYMBOL_MAP.keys():
-            if re.search(symbol + "$", user_trigger):
-                symbols = SYMBOL_MAP[symbol]
-                break
+        for regex, tickers in SYMBOL_MAP.items():
+            if re.search(f"{regex}$", user_trigger):
+                symbols = tickers
 
     write_ticker(bot, symbols)
 
 
-@sopel.module.rule("\\.?\\.fun ((?:(?:[^ ]+) ?)+)$")
-def fun_lookup(bot, trigger):
-    raw_symbols = trigger.group(1)
-
-    split_symbols = map(lambda s: s.strip(), raw_symbols.split(" "))[:4]
-
-    data = get_data_yahoo(split_symbols)
-
-    for row in data:
-        if row["Name"] is None:
-            continue
-
-        row["symbol"] = row["symbol"].upper()
-
-        bot.say(
-            "{symbol} ({Name}) - {LastTradePriceOnly} " \
-            "(EPS: {EarningsShare}) " \
-            "(P/E: {PERatio}) " \
-            "(FP/E: {PriceEPSEstimateNextYear}) " \
-            "(P/S: {PriceSales}) " \
-            "(P/B: {PriceBook}) " \
-            "(BV: {BookValue}) " \
-            "(50MA: {FiftydayMovingAverage}) " \
-            "(200MA: {TwoHundreddayMovingAverage}) " \
-            "(Market Cap: {MarketCapitalization}) " \
-            "(Short Ratio: {ShortRatio})".format(**row))
-
-
-ALII = "$alii.json"
-if os.path.exists(ALII):
-    ALII = json.load(open("$alii.json", "r"))
-else:
-    ALII = {}
-
 @sopel.module.rule(r"\$alias ([^ ]+) ((?:(?:[^ ]+)\s*)+)")
 def alias_add(bot, trigger):
     alias = trigger.group(1)
-    if alias == "alias":
-        bot.say("Nope!")
 
-    # if alias in ALII:
-    #     bot.say("Alias {0} in use!".format(alias))
-    #     return
+    # dont overwrite alias command
+    if alias == "alias":
+        bot.say("Can't overwite $alias")
 
     raw_symbols = trigger.group(2)
-    split_symbols = map(lambda s: s.strip(), re.split(r"\s+", raw_symbols))[:10]
-    ALII[alias] = split_symbols
+    split_symbols = list(map(str.strip, re.split(r"\s+", raw_symbols)))[:10]
 
-    bot.say("Alias ${0} set to: {1} 🚀🚀🚀".format(alias, ", ".join(split_symbols)))
-    json.dump(ALII, open("$alii.json", "w+"))
+    bot.db.set_plugin_value("pinance", f"alias_{alias}", split_symbols)
+
+    symbols_str = ", ".join(split_symbols)
+    bot.say(f"Alias ${alias} set to: {symbols_str} 🚀🚀🚀")
 
 
 @sopel.module.rule(r"\$([^ ]+)")
@@ -271,7 +202,5 @@ def alias_use(bot, trigger):
     if alias == "alias":
         return
 
-    if alias not in ALII:
-        return
-
-    write_ticker(bot, ALII[alias])
+    if symbols := bot.db.get_plugin_value("pinance", f"alias_{alias}"):
+        write_ticker(bot, symbols)
