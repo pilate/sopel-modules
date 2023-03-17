@@ -92,9 +92,9 @@ def next_launch(bot, trigger):
     line = "{_name}"
     line += " | Rocket: {_rocket_configuration_full_name}"
     if launch.get("mission"):
-        line += " | Mission: {_mission_type}, {_mission_orbit_name}"
+        line += " | Mission: {_mission_type} ({_mission_orbit_name})"
     if launch.get("pad"):
         line += " | Pad: {_pad_name}, {_pad_location_name}"
-    line += " | Countdown: {_net_diff}"
+    line += " | Countdown: T-{_net_diff}"
 
     bot.say(line.format(**flattened))
