@@ -16,7 +16,7 @@ def get_launches(name=""):
     now = now.replace(microsecond=0)
 
     response = requests.get(
-        "https://lldev.thespacedevs.com/2.2.0/launch/upcoming/",
+        "https://ll.thespacedevs.com/2.2.0/launch/upcoming/",
         params=params,
         timeout=10,
     ).json()
