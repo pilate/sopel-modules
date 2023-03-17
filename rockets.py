@@ -1,4 +1,6 @@
 import datetime
+import json
+from time import time
 
 import requests
 import sopel.module
@@ -7,6 +9,31 @@ import sopel.module
 DATE_FMT = "%Y-%m-%dT%H:%M:%SZ"
 
 
+def ttlcache(seconds=10):
+    def wrap(function):
+        cache = {}
+
+        def wrapped(*args, **kwargs):
+            now = time()
+
+            cache_key = json.dumps([args, kwargs])
+            if cached := cache.get(cache_key):
+                expiration, value = cached
+                if now < expiration:
+                    return value
+
+            value = function(*args, **kwargs)
+
+            cache[cache_key] = (time() + seconds, value)
+
+            return value
+
+        return wrapped
+
+    return wrap
+
+
+@ttlcache(600)
 def get_launches(name=""):
     params = {}
     if name:
