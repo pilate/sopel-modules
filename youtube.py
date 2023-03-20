@@ -69,19 +69,11 @@ def parse_duration(data):
 @sopel.module.rule(r".*youtube.com/watch\S*v=(?P<vid>[\w-]+)")
 @sopel.module.rule(r".*youtu.be/([\w-]+)")
 def title_lookup(bot, trigger):
-    if trigger.sender.lower() == "#chases":
-        return
-
-    try:
-        key = bot.config.youtube.api_key
-    except Exception:
+    if not bot.config.youtube.api_key:
         logging.error("Missing api_key configuration setting")
         return
 
-    if trigger.args[0].lower() in ["#hardballs", "#policechases"]:
-        return
-
-    yt_data = get_data(trigger.groups(1), key)["items"]
+    yt_data = get_data(trigger.groups(1), bot.config.youtube.api_key)["items"]
     if not yt_data:
         bot.say("Failed to look up title")
         return
