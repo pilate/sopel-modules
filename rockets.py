@@ -77,24 +77,42 @@ def flatten(root, thing, prefix=""):
     return root
 
 
+def format_launch(launch):
+    flattened = flatten({}, launch)
+
+    line = "{_rocket_configuration_full_name} - \x02{_mission_name}\x0f"
+
+    if launch.get("mission"):
+        line += " | \x02Mission:\x0f {_mission_type} ({_mission_orbit_name})"
+
+    if launch.get("pad"):
+        line += " | \x02Pad:\x0f {_pad_name}, {_pad_location_name}"
+
+    line += " | \x02Countdown:\x0f T-{_net_diff}"
+
+    return line.format(**flattened)
+
+
 @sopel.module.rule("\\.?\\.launch(?: (.+))?$")
 def next_launch(bot, trigger):
     name = trigger.group(1) or ""
 
-    data = get_launches(name)
+    launches = get_launches(name)
+    if not launches:
+        bot.say("No launches found")
+        return
+
+    bot.say(format_launch(launches[0]))
+
+
+@sopel.module.rule("\\.?\\.launches$")
+def next_launches(bot, _):
+    data = get_launches()
     if not data:
         bot.say("No launches found")
         return
 
-    launch = data[0]
-    flattened = flatten({}, launch)
-
-    line = "{_name}"
-    line += " | Rocket: {_rocket_configuration_full_name}"
-    if launch.get("mission"):
-        line += " | Mission: {_mission_type} ({_mission_orbit_name})"
-    if launch.get("pad"):
-        line += " | Pad: {_pad_name}, {_pad_location_name}"
-    line += " | Countdown: T-{_net_diff}"
-
-    bot.say(line.format(**flattened))
+    for count, launch in enumerate(data):
+        bot.say(format_launch(launch))
+        if count == 4:
+            break
