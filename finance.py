@@ -188,11 +188,12 @@ def alias_add(bot, trigger):
         bot.say("Can't overwite $alias")
 
     raw_symbols = trigger.group(2)
-    split_symbols = list(map(str.strip, re.split(r"\s+", raw_symbols)))[:10]
+    split_symbols = filter(bool, map(str.strip, re.split(r"\s+", raw_symbols)))
+    final_list = list(split_symbols)[:10]
 
-    bot.db.set_plugin_value("pinance", f"alias_{alias}", split_symbols)
+    bot.db.set_plugin_value("pinance", f"alias_{alias}", final_list)
 
-    symbols_str = ", ".join(split_symbols)
+    symbols_str = ", ".join(final_list)
     bot.say(f"Alias ${alias} set to: {symbols_str} 🚀🚀🚀")
 
 
