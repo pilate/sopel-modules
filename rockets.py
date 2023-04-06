@@ -1,5 +1,6 @@
 import datetime
 import json
+from operator import itemgetter
 from time import time
 
 import requests
@@ -35,7 +36,7 @@ def ttlcache(seconds=10):
 
 @ttlcache(600)
 def get_launches(name=""):
-    params = {}
+    params = {"mode": "detailed"}
     if name:
         params = {"search": name}
 
@@ -50,8 +51,8 @@ def get_launches(name=""):
 
     matching = []
     for launch in response["results"]:
-        if launch["status"]["id"] != 1:
-            continue
+        # if launch["status"]["id"] != 1:
+        #     continue
 
         launch_time = datetime.datetime.strptime(launch["net"], DATE_FMT)
         if launch_time < now:
@@ -64,36 +65,41 @@ def get_launches(name=""):
     return matching
 
 
-def flatten(root, thing, prefix=""):
-    if isinstance(thing, dict):
-        for key, value in thing.items():
-            flatten(root, value, f"{prefix}_{key}")
-    elif isinstance(thing, list):
-        for counter, value in enumerate(thing):
-            flatten(root, value, f"{prefix}_{counter}")
-    else:
-        root[prefix] = thing
-
-    return root
-
-
 def format_launch(launch):
-    flattened = flatten({}, launch)
+    line = "{provider}: ".format(provider=launch["launch_service_provider"]["name"])
 
-    line = "{_rocket_configuration_full_name} - \x02{_mission_name}\x0f"
+    rocket_config = launch["rocket"]["configuration"]
+    line += "{name} - ".format(name=rocket_config["name"])
 
-    if launch.get("mission"):
-        line += " | \x02Mission:\x0f {_mission_type} ({_mission_orbit_name})"
+    if mission := launch.get("mission"):
+        line += "\x02{name}\x0f".format(name=mission["name"])
+        line += " | \x02Mission:\x0f {type} ({orbit})".format(
+            type=mission["type"], orbit=mission["orbit"]["name"]
+        )
 
-    if launch.get("pad"):
-        line += " | \x02Pad:\x0f {_pad_name}, {_pad_location_name}"
+    else:
+        launch_name = launch["name"]
+        rocket_name = rocket_config["full_name"]
+        line += "\x02{name}\x0f".format(
+            name=launch_name.replace(rocket_name, "").strip(" |")
+        )
 
-    line += " | \x02Countdown:\x0f T-{_net_diff}"
+    if pad := launch.get("pad"):
+        line += " | \x02Pad:\x0f {name} - {location}".format(
+            name=pad["name"], location=pad["location"]["name"]
+        )
 
-    return line.format(**flattened)
+    if vid_urls := launch.get("vidURLs"):
+        line += " | \x02Streams:\x0f "
+        getter = itemgetter("url")
+        line += " / ".join(map(getter, vid_urls))
+
+    line += " | \x02Countdown:\x0f T-{net_diff}".format(net_diff=launch["net_diff"])
+
+    return line
 
 
-@sopel.module.rule("\\.?\\.launch(?: (.+))?$")
+@sopel.module.rule(r"^\.?\.launch(?: (.+))?$")
 def next_launch(bot, trigger):
     name = trigger.group(1) or ""
 
@@ -105,14 +111,16 @@ def next_launch(bot, trigger):
     bot.say(format_launch(launches[0]))
 
 
-@sopel.module.rule("\\.?\\.launches$")
-def next_launches(bot, _):
-    data = get_launches()
-    if not data:
+@sopel.module.rule(r"^\.?\.launches(?: (.+))?$")
+def next_launches(bot, trigger):
+    name = trigger.group(1) or ""
+
+    launches = get_launches(name)
+    if not launches:
         bot.say("No launches found")
         return
 
-    for count, launch in enumerate(data):
+    for count, launch in enumerate(launches):
         bot.say(format_launch(launch))
-        if count == 4:
+        if count == 3:
             break
