@@ -46,14 +46,11 @@ def get_launches(name=""):
     response = requests.get(
         "https://ll.thespacedevs.com/2.2.0/launch/upcoming/",
         params=params,
-        timeout=10,
+        timeout=30,
     ).json()
 
     matching = []
     for launch in response["results"]:
-        # if launch["status"]["id"] != 1:
-        #     continue
-
         launch_time = datetime.datetime.strptime(launch["net"], DATE_FMT)
         if launch_time < now:
             continue
@@ -94,7 +91,9 @@ def format_launch(launch):
         getter = itemgetter("url")
         line += " / ".join(map(getter, vid_urls))
 
-    line += " | \x02Countdown:\x0f T-{net_diff}".format(net_diff=launch["net_diff"])
+    line += " | \x02Countdown:\x0f T-{net_diff} ({status})".format(
+        net_diff=launch["net_diff"], status=launch["status"]["name"]
+    )
 
     return line
 
