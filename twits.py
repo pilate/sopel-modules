@@ -125,7 +125,8 @@ def last_tweet(bot, trigger):
     write_twit(bot, tweet)
 
 
-@sopel.module.rule(r".*twitter.com/(\S*)/status/(?P<id>\d+)")
+@sopel.module.rule(r"https?://[^/]*twitter.com/(\S*)/status/(?P<id>\d+)")
+@sopel.module.rule(r"https?://[^/]*nitter[^/]+/(\S*)/status/(?P<id>\d+)")
 def specific_tweet(bot, trigger):
     bearer = bot.db.get_plugin_value("twits", "bearer")
     if not bearer:
