@@ -1,7 +1,8 @@
 import base64
+import html
 import logging
 import re
-from html.parser import HTMLParser
+
 
 import requests
 import sopel.config.types
@@ -92,7 +93,7 @@ def write_twit(bot, tweet_data):
     # merge whitespace
     fixed_data = re.sub(r"\s+", " ", fixed_data)
     # html entity unescape
-    fixed_data = HTMLParser().unescape(fixed_data)
+    fixed_data = html.unescape(fixed_data)
 
     tweeter = tweet_data["user"]["name"]
     bot.say(f"@{tweeter}: {fixed_data}")
