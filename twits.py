@@ -2,6 +2,7 @@ import base64
 import html
 import logging
 import re
+from functools import lru_cache
 
 
 import requests
@@ -82,6 +83,13 @@ def make_request(api, params, bearer):
     return response.json()
 
 
+@lru_cache
+def get_tweet(tweet_id, bearer):
+    return make_request(
+        "show.json", params={"id": tweet_id, "tweet_mode": "extended"}, bearer=bearer
+    )
+
+
 def write_twit(bot, tweet_data):
     if "full_text" in tweet_data:
         text = tweet_data["full_text"]
@@ -134,8 +142,6 @@ def specific_tweet(bot, trigger):
         return
 
     tweet_id = trigger.groupdict()["id"]
-    tweet = make_request(
-        "show.json", params={"id": tweet_id, "tweet_mode": "extended"}, bearer=bearer
-    )
+    tweet = get_tweet(tweet_id, bearer)
 
     write_twit(bot, tweet)
