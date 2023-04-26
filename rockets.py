@@ -34,14 +34,11 @@ def ttlcache(seconds=10):
     return wrap
 
 
-@ttlcache(600)
+@ttlcache(300)
 def get_launches(name=""):
     params = {"mode": "detailed"}
     if name:
         params = {"search": name}
-
-    now = datetime.datetime.utcnow()
-    now = now.replace(microsecond=0)
 
     response = requests.get(
         "https://ll.thespacedevs.com/2.2.0/launch/upcoming/",
@@ -49,17 +46,8 @@ def get_launches(name=""):
         timeout=30,
     ).json()
 
-    matching = []
-    for launch in response["results"]:
-        launch_time = datetime.datetime.strptime(launch["net"], DATE_FMT)
-        if launch_time < now:
-            continue
-
-        launch["net_diff"] = launch_time - now
-
-        matching.append(launch)
-
-    return matching
+    # return empty list on error
+    return response.get("results", [])
 
 
 def format_launch(launch):
@@ -103,11 +91,22 @@ def next_launch(bot, trigger):
     name = trigger.group(1) or ""
 
     launches = get_launches(name)
-    if not launches:
-        bot.say("No launches found")
-        return
 
-    bot.say(format_launch(launches[0]))
+    now = datetime.datetime.utcnow()
+    now = now.replace(microsecond=0)
+
+    for launch in launches:
+        launch_time = datetime.datetime.strptime(launch["net"], DATE_FMT)
+        if launch_time < now:
+            continue
+
+        launch["net_diff"] = launch_time - now
+
+        bot.say(format_launch(launch))
+        break
+
+    else:
+        bot.say("No launches found")
 
 
 @sopel.module.rule(r"^\.?\.launches(?: (.+))?$")
@@ -115,11 +114,24 @@ def next_launches(bot, trigger):
     name = trigger.group(1) or ""
 
     launches = get_launches(name)
-    if not launches:
-        bot.say("No launches found")
-        return
 
-    for count, launch in enumerate(launches):
-        bot.say(format_launch(launch))
-        if count == 3:
+    now = datetime.datetime.utcnow()
+    now = now.replace(microsecond=0)
+
+    found = 0
+    for launch in launches:
+        if found == 4:
             break
+
+        launch_time = datetime.datetime.strptime(launch["net"], DATE_FMT)
+        if launch_time < now:
+            continue
+
+        launch["net_diff"] = launch_time - now
+        bot.say(format_launch(launch))
+        found += 1
+
+    if not found:
+        bot.say("No launches found")
+
+
