@@ -149,7 +149,7 @@ def symbol_lookup(bot, trigger):
         if quote.get("dividend", "0") != "0":
             message += " | Dividend: {dividend}"
             if "dividendyield" in quote:
-                message += " ({dividendyield}%)"
+                message += " ({dividendyield})"
 
         if quote["curmktstatus"] != "REG_MKT":
             if extended := quote.get("ExtendedMktQuote"):
