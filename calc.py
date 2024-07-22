@@ -2,6 +2,7 @@ import ast
 import math
 import operator
 import re
+from decimal import Decimal
 
 import sopel.module
 
@@ -76,7 +77,7 @@ def safe_eval(node):
         node = ast.parse(node, "<string>", "eval").body
 
     if isinstance(node, ast.Num):
-        return node.n
+        return Decimal(str(node.s))
 
     if isinstance(node, ast.BinOp):
         operation = operations[node.op.__class__]
@@ -84,7 +85,7 @@ def safe_eval(node):
         right = safe_eval(node.right)
         if isinstance(node.op, ast.Pow):
             assert right < 100
-        return operation(float(left), float(right))
+        return operation(left, right)
 
     if isinstance(node, ast.Call):
         assert not node.keywords and not node.starargs and not node.kwargs
@@ -117,8 +118,5 @@ def calc(bot, trigger):
     except Exception:
         bot.say("I'm afraid I can't do that.")
         return
-
-    if isinstance(result, float) and result.is_integer():
-        result = int(result)
 
     bot.say(f"{result:,}")
