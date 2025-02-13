@@ -78,7 +78,10 @@ def get_data_cnbc(symbol):
             "output": "json",
             "noform": 1,
         },
-        headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
+        headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate"
+            "User-Agent": "Mozilla/5.0",
+        },
         timeout=5
     )
 
